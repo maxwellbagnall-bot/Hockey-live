@@ -820,18 +820,83 @@ export default function HockeyLiveApp() {
               </div>
             )}
 
-            <div className="scoreActions">
-              <button
-                className="primaryButton"
-                onClick={() => setContributeOpen((value) => !value)}
-              >
-                {contributeOpen ? "Close reporting" : "Report what happened"}
-              </button>
+            {selected.status !== "finished" && (
+              <div className="matchQuickActions">
+                <div className="quickActionHeading">
+                  <div>
+                    <p className="eyebrow">QUICK ACTIONS</p>
+                    <h3>What just happened?</h3>
+                  </div>
+                  <span>{minuteDraft}&apos;</span>
+                </div>
 
-              <button className="secondaryButton" onClick={downloadShareGraphic}>
-                Create share graphic
-              </button>
-            </div>
+                <div className="quickGoalGrid">
+                  <button
+                    className="quickGoalButton"
+                    onClick={() => submitReport("goal", "home")}
+                  >
+                    <span>+ GOAL</span>
+                    <b>{selected.home}</b>
+                  </button>
+
+                  <button
+                    className="quickGoalButton"
+                    onClick={() => submitReport("goal", "away")}
+                  >
+                    <span>+ GOAL</span>
+                    <b>{selected.away}</b>
+                  </button>
+                </div>
+
+                <div className="quickSecondaryGrid">
+                  <button
+                    className="quickEventButton"
+                    onClick={() => setContributeOpen((value) => !value)}
+                  >
+                    {contributeOpen ? "Close event panel" : "Report card / corner / event"}
+                  </button>
+
+                  <button
+                    className="quickShareButton"
+                    onClick={downloadShareGraphic}
+                  >
+                    Share score
+                  </button>
+                </div>
+
+                <div className="quickCommentBox">
+                  <input
+                    placeholder="Comment on the match…"
+                    value={comment}
+                    maxLength={500}
+                    onChange={(event) => setComment(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && comment.trim()) {
+                        void submitReport("comment", null, comment);
+                      }
+                    }}
+                  />
+                  <button
+                    disabled={!comment.trim()}
+                    onClick={() => submitReport("comment", null, comment)}
+                  >
+                    Comment
+                  </button>
+                </div>
+
+                <small className="quickActionNote">
+                  Goal reports update the score and timeline together.
+                </small>
+              </div>
+            )}
+
+            {selected.status === "finished" && (
+              <div className="scoreActions">
+                <button className="secondaryButton" onClick={downloadShareGraphic}>
+                  Create share graphic
+                </button>
+              </div>
+            )}
           </div>
 
           {contributeOpen && (
