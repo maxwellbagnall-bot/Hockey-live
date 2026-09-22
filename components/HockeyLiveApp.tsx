@@ -38,6 +38,13 @@ type Match = {
   trust: Confidence;
   status: "scheduled" | "live" | "finished";
   competition: string;
+  controllerProfileId: string | null;
+  controllerUsername: string | null;
+  controllerLastSeenAt: string | null;
+  lastControllerUsername: string | null;
+  clockSeconds: number;
+  clockRunning: boolean;
+  clockUpdatedAt: string;
 };
 
 const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
@@ -69,21 +76,69 @@ function initials(name: string) {
     .toUpperCase();
 }
 
+function controllerIsStale(match: Match, nowMs: number) {
+  if (!match.controllerProfileId) return false;
+  if (!match.controllerLastSeenAt) return true;
+  return nowMs - new Date(match.controllerLastSeenAt).getTime() > 120000;
+}
+
+function sharedClockSeconds(match: Match, nowMs: number) {
+  let seconds = match.clockSeconds ?? 0;
+
+  if (match.clockRunning && match.clockUpdatedAt) {
+    const updatedAt = new Date(match.clockUpdatedAt).getTime();
+    let effectiveNow = nowMs;
+
+    if (match.controllerLastSeenAt) {
+      const staleCutoff =
+        new Date(match.controllerLastSeenAt).getTime() + 120000;
+      effectiveNow = Math.min(effectiveNow, staleCutoff);
+    }
+
+    seconds += Math.max(0, Math.floor((effectiveNow - updatedAt) / 1000));
+  }
+
+  return Math.max(0, Math.min(seconds, 10800));
+}
+
+function formatClock(seconds: number) {
+  const safe = Math.max(0, Math.floor(seconds));
+  const minutes = Math.floor(safe / 60);
+  const secs = safe % 60;
+  return `${minutes}:${String(secs).padStart(2, "0")}`;
+}
+
 export default function HockeyLiveApp() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
   const [contributeOpen, setContributeOpen] = useState(false);
-  const [officialControlsOpen, setOfficialControlsOpen] = useState(false);
-  const [scorerPin, setScorerPin] = useState("");
   const [minuteDraft, setMinuteDraft] = useState(0);
-  const [periodDraft, setPeriodDraft] = useState("Q1");
+  const [minuteEdited, setMinuteEdited] = useState(false);
+  const [myProfileId, setMyProfileId] = useState<string | null>(null);
+  const [myUsername, setMyUsername] = useState("");
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
   const [backendError, setBackendError] = useState("");
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
-  const selected = matches.find((match) => match.id === selectedId) ?? matches[0];
+  const selected =
+    matches.find((match) => match.id === selectedId) ?? matches[0];
+
+  const selectedClock = selected
+    ? sharedClockSeconds(selected, nowTick)
+    : 0;
+
+  const selectedControllerStale = selected
+    ? controllerIsStale(selected, nowTick)
+    : false;
+
+  const iAmController = Boolean(
+    selected &&
+      myProfileId &&
+      selected.controllerProfileId === myProfileId
+  );
 
   const feed = useMemo(
     () => events.map((event) => ({ ...event, ...EVENT_META[event.kind] })),
@@ -95,11 +150,31 @@ export default function HockeyLiveApp() {
     window.setTimeout(() => setToast(""), 2400);
   }
 
+  function getAccessToken() {
+    return localStorage.getItem("hockey_live_access_token");
+  }
+
+  async function loadMyProfile() {
+    const { data, error } = await supabase.rpc("get_my_hockey_profile", {
+      p_access_token: getAccessToken() || null
+    });
+
+    if (error) return;
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (row?.profile_id) {
+      setMyProfileId(row.profile_id);
+      setMyUsername(row.username ?? "");
+    }
+  }
+
   async function loadMatches() {
     const { data, error } = await supabase
       .from("matches")
       .select(
         `id, home_score, away_score, period, minute, status, verification, competition,
+         controller_profile_id, controller_username, controller_last_seen_at,
+         last_controller_username, clock_seconds, clock_running, clock_updated_at,
          home_team:teams!matches_home_team_id_fkey(id,name),
          away_team:teams!matches_away_team_id_fkey(id,name)`
       )
@@ -123,10 +198,18 @@ export default function HockeyLiveApp() {
       minute: row.minute ?? 0,
       trust: prettyTrust(row.verification),
       status: row.status,
-      competition: row.competition ?? "Hockey match"
+      competition: row.competition ?? "Hockey match",
+      controllerProfileId: row.controller_profile_id ?? null,
+      controllerUsername: row.controller_username ?? null,
+      controllerLastSeenAt: row.controller_last_seen_at ?? null,
+      lastControllerUsername: row.last_controller_username ?? null,
+      clockSeconds: row.clock_seconds ?? 0,
+      clockRunning: Boolean(row.clock_running),
+      clockUpdatedAt: row.clock_updated_at ?? new Date().toISOString()
     }));
 
     setMatches(next);
+
     const requestedMatch =
       typeof window !== "undefined"
         ? new URLSearchParams(window.location.search).get("match")
@@ -160,6 +243,7 @@ export default function HockeyLiveApp() {
     }
 
     const match = matches.find((item) => item.id === matchId);
+
     const next: MatchEvent[] = (data ?? []).map((row: any) => ({
       id: row.id,
       kind: row.event_type as EventKind,
@@ -182,7 +266,10 @@ export default function HockeyLiveApp() {
   }
 
   useEffect(() => {
+    void loadMyProfile();
     void loadMatches();
+
+    const ticker = window.setInterval(() => setNowTick(Date.now()), 1000);
 
     const channel = supabase
       .channel("hockey-live-matches")
@@ -194,6 +281,7 @@ export default function HockeyLiveApp() {
       .subscribe();
 
     return () => {
+      window.clearInterval(ticker);
       void supabase.removeChannel(channel);
     };
   }, []);
@@ -225,25 +313,111 @@ export default function HockeyLiveApp() {
   useEffect(() => {
     if (!selected) return;
 
-    setMinuteDraft(selected.minute);
-    setPeriodDraft(selected.period);
-
-    const savedPin = localStorage.getItem(
-      `hockey_live_scorer_pin_${selected.id}`
-    );
-
-    setScorerPin(savedPin ?? "");
+    setMinuteEdited(false);
+    setMinuteDraft(Math.floor(sharedClockSeconds(selected, Date.now()) / 60));
 
     const requestedMatch = new URLSearchParams(window.location.search).get("match");
     if (requestedMatch === selected.id) {
       setContributeOpen(true);
     }
-  }, [selected?.id, selected?.minute, selected?.period]);
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (!selected || minuteEdited) return;
+    setMinuteDraft(Math.floor(selectedClock / 60));
+  }, [selectedClock, selected?.id, minuteEdited]);
+
+  useEffect(() => {
+    if (!selected || !myProfileId) return;
+    if (selected.controllerProfileId !== myProfileId) return;
+
+    async function heartbeat() {
+      await supabase.rpc("heartbeat_match_control", {
+        p_access_token: getAccessToken() || null,
+        p_match_id: selected.id
+      });
+    }
+
+    void heartbeat();
+    const timer = window.setInterval(() => void heartbeat(), 45000);
+
+    return () => window.clearInterval(timer);
+  }, [selected?.id, selected?.controllerProfileId, myProfileId]);
+
+  async function claimControl() {
+    if (!selected) return;
+
+    const wasStale = selectedControllerStale;
+    const { error } = await supabase.rpc("claim_match_control", {
+      p_access_token: getAccessToken() || null,
+      p_match_id: selected.id
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    await loadMatches();
+    announce(
+      wasStale
+        ? "You’ve taken over the shared match clock"
+        : "You’re now the Match Controller"
+    );
+  }
+
+  async function releaseControl() {
+    if (!selected) return;
+
+    const { error } = await supabase.rpc("release_match_control", {
+      p_access_token: getAccessToken() || null,
+      p_match_id: selected.id
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    await loadMatches();
+    announce("Match control released");
+  }
+
+  async function controlClock(
+    action: "start" | "resume" | "pause" | "next_period" | "set",
+    seconds?: number
+  ) {
+    if (!selected) return;
+
+    const { error } = await supabase.rpc("control_match_clock", {
+      p_access_token: getAccessToken() || null,
+      p_match_id: selected.id,
+      p_action: action,
+      p_period: null,
+      p_seconds: seconds ?? null
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    await loadMatches();
+
+    if (action === "next_period") {
+      announce(selected.period === "Q4" ? "Match finished" : "Period advanced");
+    } else if (action === "pause") {
+      announce("Shared clock paused");
+    } else if (action === "set") {
+      announce("Shared clock corrected");
+    } else {
+      announce("Shared clock running");
+    }
+  }
 
   async function submitReport(kind: EventKind, side: Side, text?: string) {
     if (!selected) return;
 
-    const accessToken = localStorage.getItem("hockey_live_access_token");
     const teamId =
       side === "home"
         ? selected.homeTeamId
@@ -264,13 +438,13 @@ export default function HockeyLiveApp() {
     }
 
     const { data, error } = await supabase.rpc("submit_match_report", {
-      p_access_token: accessToken || null,
+      p_access_token: getAccessToken() || null,
       p_match_id: selected.id,
       p_event_type: kind,
       p_team_id: teamId,
       p_minute: minuteDraft,
       p_note: note,
-      p_pin: scorerPin.trim() || null
+      p_pin: null
     });
 
     if (error) {
@@ -279,66 +453,21 @@ export default function HockeyLiveApp() {
     }
 
     setComment("");
+    setMinuteEdited(false);
+
     await Promise.all([loadMatches(), loadEvents(selected.id)]);
 
     const returned = Array.isArray(data) ? data[0] : data;
     const count = returned?.report_count ?? 1;
+    const confidence = returned?.confidence ?? "community";
 
     if (kind === "comment") {
       announce("Comment added");
-    } else if (count >= 2) {
-      announce("Report matched another user — now Confirmed");
+    } else if (confidence === "confirmed" || count >= 2) {
+      announce("Report Confirmed");
     } else {
       announce("Community report added");
     }
-  }
-
-  async function saveOfficialClock(period = periodDraft, minute = minuteDraft) {
-    if (!selected) return false;
-
-    if (!scorerPin.trim()) {
-      announce("Enter the designated scorer PIN");
-      return false;
-    }
-
-    const { error } = await supabase.rpc("update_match_clock", {
-      p_match_id: selected.id,
-      p_pin: scorerPin.trim(),
-      p_period: period,
-      p_minute: minute
-    });
-
-    if (error) {
-      announce(
-        error.message.includes("Invalid scorer PIN")
-          ? "Incorrect designated scorer PIN"
-          : error.message
-      );
-      return false;
-    }
-
-    await loadMatches();
-    announce("Official match clock updated");
-    return true;
-  }
-
-  async function advanceOfficialPeriod() {
-    if (!selected) return;
-
-    const order = ["Q1", "Q2", "Q3", "Q4", "FT"];
-    const index = Math.max(0, order.indexOf(periodDraft));
-    const next = order[Math.min(index + 1, order.length - 1)];
-
-    const saved = await saveOfficialClock(next, minuteDraft);
-    if (!saved) return;
-
-    await submitReport(
-      "period_end",
-      null,
-      next === "FT" ? "Full time." : `${periodDraft} ended. ${next} begins.`
-    );
-
-    setPeriodDraft(next);
   }
 
   function downloadShareGraphic() {
@@ -381,7 +510,11 @@ export default function HockeyLiveApp() {
     ctx.textAlign = "left";
     ctx.fillStyle = "#18e28b";
     ctx.font = "700 32px Arial";
-    ctx.fillText(`${selected.period} • ${selected.minute}'`, 80, 760);
+    ctx.fillText(
+      `${selected.period} • ${formatClock(selectedClock)}`,
+      80,
+      760
+    );
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "600 28px Arial";
@@ -426,9 +559,7 @@ export default function HockeyLiveApp() {
           <a href="#how">How it works</a>
         </nav>
 
-        <a className="ghostButton" href="/create">
-          Create match
-        </a>
+        <a className="ghostButton" href="/create">Create match</a>
       </header>
 
       <section className="hero" id="top">
@@ -436,8 +567,8 @@ export default function HockeyLiveApp() {
           <p className="eyebrow">FIELD HOCKEY • LIVE</p>
           <h1>Every match can be live.</h1>
           <p className="heroCopy">
-            Community-powered scores and match updates. See something happen?
-            Report it. Hockey Live cross-checks matching reports automatically.
+            Community-powered scores and match updates. One Match Controller keeps
+            the shared clock moving while everyone at the game can report what they see.
           </p>
 
           <div className="heroActions">
@@ -477,36 +608,43 @@ export default function HockeyLiveApp() {
         </div>
 
         <div className="matchGrid">
-          {matches.map((match) => (
-            <button
-              key={match.id}
-              className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
-              onClick={() => setSelectedId(match.id)}
-            >
-              <div className="matchMeta">
-                <span>
-                  {match.status === "scheduled"
-                    ? "Scheduled"
-                    : match.period === "FT"
-                      ? "Finished"
-                      : `${match.period} • ${match.minute}'`}
-                </span>
-                <span className={`trust ${trustClass(match.trust)}`}>
-                  {match.trust}
-                </span>
-              </div>
+          {matches.map((match) => {
+            const clock = sharedClockSeconds(match, nowTick);
+            return (
+              <button
+                key={match.id}
+                className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+                onClick={() => setSelectedId(match.id)}
+              >
+                <div className="matchMeta">
+                  <span>
+                    {match.status === "scheduled"
+                      ? "Scheduled"
+                      : match.period === "FT"
+                        ? "Finished"
+                        : `${match.period} • ${formatClock(clock)}`}
+                  </span>
+                  <span className={`trust ${trustClass(match.trust)}`}>
+                    {match.trust}
+                  </span>
+                </div>
 
-              <div className="teamRow">
-                <span>{match.home}</span><b>{match.homeScore}</b>
-              </div>
-              <div className="teamRow">
-                <span>{match.away}</span><b>{match.awayScore}</b>
-              </div>
-              <div className="cardFooter">
-                Open match centre <span>→</span>
-              </div>
-            </button>
-          ))}
+                <div className="teamRow">
+                  <span>{match.home}</span><b>{match.homeScore}</b>
+                </div>
+                <div className="teamRow">
+                  <span>{match.away}</span><b>{match.awayScore}</b>
+                </div>
+
+                <div className="cardFooter">
+                  {match.controllerUsername
+                    ? `Controlled by @${match.controllerUsername}`
+                    : "Open match centre"}{" "}
+                  <span>→</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </section>
 
@@ -522,6 +660,7 @@ export default function HockeyLiveApp() {
                     ? "FULL TIME"
                     : "LIVE"}
               </span>
+
               <span className={`trust ${trustClass(selected.trust)}`}>
                 {selected.trust}
               </span>
@@ -545,15 +684,128 @@ export default function HockeyLiveApp() {
               </div>
             </div>
 
-            <div className="clock">
-              <b>{selected.period}</b>
-              <span>{selected.minute}'</span>
+            <div className="sharedClock">
+              <span>{selected.period}</span>
+              <strong>{formatClock(selectedClock)}</strong>
+              <small>
+                {selected.clockRunning && !selectedControllerStale
+                  ? "Shared live clock"
+                  : selectedControllerStale
+                    ? "Clock frozen — controller inactive"
+                    : selected.status === "finished"
+                      ? "Final match time"
+                      : "Clock paused"}
+              </small>
             </div>
 
+            <div className="controllerStrip">
+              {selected.status === "finished" ? (
+                <div>
+                  <span className="controllerBadge">MATCH CONTROLLER</span>
+                  <b>
+                    {selected.lastControllerUsername
+                      ? `@${selected.lastControllerUsername}`
+                      : "No controller recorded"}
+                  </b>
+                </div>
+              ) : iAmController ? (
+                <div>
+                  <span className="controllerBadge active">YOU’RE CONTROLLING</span>
+                  <b>@{myUsername || selected.controllerUsername}</b>
+                </div>
+              ) : selected.controllerProfileId && !selectedControllerStale ? (
+                <div>
+                  <span className="controllerBadge">MATCH CONTROLLER</span>
+                  <b>@{selected.controllerUsername}</b>
+                </div>
+              ) : (
+                <div>
+                  <span className="controllerBadge available">
+                    {selectedControllerStale ? "CONTROLLER INACTIVE" : "NO CONTROLLER"}
+                  </span>
+                  <b>
+                    {selectedControllerStale
+                      ? `@${selected.controllerUsername} stopped responding`
+                      : "Be the person who keeps everyone live"}
+                  </b>
+                </div>
+              )}
+
+              {selected.status !== "finished" &&
+                !iAmController &&
+                (!selected.controllerProfileId || selectedControllerStale) && (
+                  <button className="controllerClaimButton" onClick={claimControl}>
+                    {selectedControllerStale
+                      ? "Take over Match Control"
+                      : "Claim Match Controller"}
+                  </button>
+                )}
+            </div>
+
+            {iAmController && selected.status !== "finished" && (
+              <div className="controllerPanel">
+                <div className="controllerPanelHeader">
+                  <div>
+                    <p className="eyebrow">MATCH CONTROLLER</p>
+                    <h3>Keep the shared clock accurate</h3>
+                  </div>
+                  <span className="controllerLiveDot">● Active</span>
+                </div>
+
+                <div className="controllerClockActions">
+                  <button
+                    className="primaryButton"
+                    onClick={() =>
+                      controlClock(selected.clockRunning ? "pause" : "start")
+                    }
+                  >
+                    {selected.clockRunning
+                      ? "Pause clock"
+                      : selected.status === "scheduled"
+                        ? "Start match"
+                        : "Resume clock"}
+                  </button>
+
+                  <button
+                    className="secondaryButton"
+                    onClick={() => controlClock("next_period")}
+                  >
+                    {selected.period === "Q4" ? "Full time" : "End quarter"}
+                  </button>
+                </div>
+
+                <div className="clockCorrection">
+                  <span>Quick correction</span>
+                  <button
+                    onClick={() =>
+                      controlClock("set", Math.max(0, selectedClock - 10))
+                    }
+                  >
+                    −10 sec
+                  </button>
+                  <button
+                    onClick={() =>
+                      controlClock("set", Math.min(10800, selectedClock + 10))
+                    }
+                  >
+                    +10 sec
+                  </button>
+                </div>
+
+                <button className="releaseControlButton" onClick={releaseControl}>
+                  Hand back Match Control
+                </button>
+              </div>
+            )}
+
             <div className="scoreActions">
-              <button className="primaryButton" onClick={() => setContributeOpen((value) => !value)}>
+              <button
+                className="primaryButton"
+                onClick={() => setContributeOpen((value) => !value)}
+              >
                 {contributeOpen ? "Close reporting" : "Report what happened"}
               </button>
+
               <button className="secondaryButton" onClick={downloadShareGraphic}>
                 Create share graphic
               </button>
@@ -571,9 +823,9 @@ export default function HockeyLiveApp() {
               </div>
 
               <p className="communityExplainer">
-                Anyone signed up to Hockey Live can report an event. If another
-                independent user reports the same thing, we merge the reports
-                rather than adding the event twice.
+                Anyone signed up to Hockey Live can report an event. Matching reports
+                are merged, not counted twice. Reports from the active Match Controller
+                are automatically Confirmed.
               </p>
 
               <div className="communityMinute">
@@ -584,11 +836,15 @@ export default function HockeyLiveApp() {
                     min="0"
                     max="120"
                     value={minuteDraft}
-                    onChange={(event) => setMinuteDraft(Number(event.target.value))}
+                    onChange={(event) => {
+                      setMinuteEdited(true);
+                      setMinuteDraft(Number(event.target.value));
+                    }}
                   />
                 </label>
                 <small>
-                  Reporting something from earlier? Set the minute it actually happened.
+                  This follows the shared clock automatically. Change it only if you’re
+                  reporting something that happened earlier.
                 </small>
               </div>
 
@@ -607,7 +863,9 @@ export default function HockeyLiveApp() {
 
               <button
                 className="periodButton"
-                onClick={() => submitReport("period_end", null, "Period end reported")}
+                onClick={() =>
+                  submitReport("period_end", null, "Period end reported")
+                }
               >
                 Report end of period
               </button>
@@ -631,72 +889,6 @@ export default function HockeyLiveApp() {
                   Post
                 </button>
               </div>
-
-              <button
-                className="designatedScorerToggle"
-                onClick={() => setOfficialControlsOpen((value) => !value)}
-              >
-                {officialControlsOpen
-                  ? "Hide designated scorer controls"
-                  : "I’m the designated scorer"}
-              </button>
-
-              {officialControlsOpen && (
-                <div className="designatedScorerBox">
-                  <p>
-                    The PIN is optional. It tells Hockey Live this report is coming
-                    from the person assigned to this fixture.
-                  </p>
-
-                  <div className="commentBox">
-                    <input
-                      type="password"
-                      inputMode="numeric"
-                      placeholder="Designated scorer PIN"
-                      value={scorerPin}
-                      onChange={(event) => setScorerPin(event.target.value)}
-                    />
-                    <button onClick={() => announce(scorerPin ? "Scorer PIN ready" : "Enter the scorer PIN")}>
-                      Use PIN
-                    </button>
-                  </div>
-
-                  <div className="timeControls">
-                    <label>
-                      Official minute
-                      <input
-                        type="number"
-                        min="0"
-                        max="120"
-                        value={minuteDraft}
-                        onChange={(event) => setMinuteDraft(Number(event.target.value))}
-                      />
-                    </label>
-
-                    <label>
-                      Official period
-                      <select
-                        value={periodDraft}
-                        onChange={(event) => setPeriodDraft(event.target.value)}
-                      >
-                        <option>Q1</option>
-                        <option>Q2</option>
-                        <option>Q3</option>
-                        <option>Q4</option>
-                        <option>FT</option>
-                      </select>
-                    </label>
-                  </div>
-
-                  <button className="periodButton" onClick={() => saveOfficialClock()}>
-                    Save official clock
-                  </button>
-
-                  <button className="periodButton" onClick={advanceOfficialPeriod}>
-                    End official period / advance
-                  </button>
-                </div>
-              )}
             </div>
           )}
 
@@ -716,6 +908,7 @@ export default function HockeyLiveApp() {
               {feed.map((event) => (
                 <article key={event.id} className="eventRow">
                   <span className={`eventIcon ${event.kind}`}>{event.icon}</span>
+
                   <div>
                     <div className="eventMeta">
                       <b>{event.label}</b>
@@ -751,33 +944,35 @@ export default function HockeyLiveApp() {
         <div className="sectionHeading">
           <div>
             <p className="eyebrow">WAZE FOR HOCKEY</p>
-            <h2>More reports, more confidence</h2>
+            <h2>One shared clock. A crowd of witnesses.</h2>
           </div>
         </div>
 
         <div className="trustGrid">
           <article>
             <span className="trust community">Community</span>
-            <h3>One report</h3>
+            <h3>Anyone can report</h3>
             <p>
-              A signed-up supporter reports something they have seen at the match.
+              Signed-up supporters report goals, cards, corners and comments from
+              the sideline.
             </p>
           </article>
 
           <article>
             <span className="trust confirmed">Confirmed</span>
-            <h3>Corroborated</h3>
+            <h3>Cross-checked</h3>
             <p>
-              A second independent report matches the first, or the designated scorer
-              reports it.
+              A second independent report matches the first, or the active Match
+              Controller reports it.
             </p>
           </article>
 
           <article>
-            <span className="trust official">Official</span>
-            <h3>Club verified</h3>
+            <span className="controllerBadge active">Match Controller</span>
+            <h3>Keep everyone in time</h3>
             <p>
-              Reserved for a verified club or competition source as we add club accounts.
+              One volunteer at the ground runs the shared clock. If they disappear,
+              another attendee can take over.
             </p>
           </article>
         </div>
