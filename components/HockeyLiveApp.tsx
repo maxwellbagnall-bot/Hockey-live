@@ -114,6 +114,7 @@ export default function HockeyLiveApp() {
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
   const [contributeOpen, setContributeOpen] = useState(false);
+  const [matchFocusOpen, setMatchFocusOpen] = useState(false);
   const [minuteDraft, setMinuteDraft] = useState(0);
   const [minuteEdited, setMinuteEdited] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
@@ -156,6 +157,7 @@ export default function HockeyLiveApp() {
 
   function openMatchCentre(matchId: string) {
     setSelectedId(matchId);
+    setMatchFocusOpen(true);
 
     const url = new URL(window.location.href);
     url.searchParams.set("match", matchId);
@@ -334,7 +336,7 @@ export default function HockeyLiveApp() {
 
     const requestedMatch = new URLSearchParams(window.location.search).get("match");
     if (requestedMatch === selected.id) {
-      setContributeOpen(true);
+      setMatchFocusOpen(true);
       window.setTimeout(() => {
         document.getElementById("match")?.scrollIntoView({
           behavior: "smooth",
@@ -348,6 +350,18 @@ export default function HockeyLiveApp() {
     if (!selected || minuteEdited) return;
     setMinuteDraft(Math.floor(selectedClock / 60));
   }, [selectedClock, selected?.id, minuteEdited]);
+
+  useEffect(() => {
+    if (!matchFocusOpen) {
+      document.body.style.overflow = "";
+      return;
+    }
+
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [matchFocusOpen]);
 
   useEffect(() => {
     if (!selected || !myProfileId) return;
@@ -671,7 +685,20 @@ export default function HockeyLiveApp() {
       </section>
 
       {selected && (
-        <section className="section matchCentre" id="match">
+        <section
+          className={`section matchCentre ${matchFocusOpen ? "matchFocusOpen" : ""}`}
+          id="match"
+        >
+          <button
+            className="matchFocusClose"
+            onClick={() => {
+              setMatchFocusOpen(false);
+              setContributeOpen(false);
+            }}
+          >
+            ‹ Scores
+          </button>
+
           <div className="scoreboard">
             <div className="scoreTopline">
               <span className="liveTag">
