@@ -1,5 +1,5 @@
-import HockeyLiveApp from "../../components/HockeyLiveApp";
+import LiveGate from "../../components/LiveGate";
 
 export default function LivePage() {
-  return <HockeyLiveApp />;
+  return <LiveGate />;
 }
