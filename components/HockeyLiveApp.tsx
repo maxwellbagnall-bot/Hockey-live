@@ -353,7 +353,9 @@ export default function HockeyLiveApp() {
   }, [selectedClock, selected?.id, minuteEdited]);
 
   useEffect(() => {
-    if (!matchFocusOpen) {
+    const isMobile = window.matchMedia("(max-width: 900px)").matches;
+
+    if (!matchFocusOpen || !isMobile) {
       document.body.style.overflow = "";
       return;
     }
