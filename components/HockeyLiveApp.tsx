@@ -353,7 +353,7 @@ export default function HockeyLiveApp() {
   }, [selectedClock, selected?.id, minuteEdited]);
 
   useEffect(() => {
-    const isMobile = window.matchMedia("(max-width: 900px)").matches;
+    const isMobile = window.matchMedia("(max-width: 720px)").matches;
 
     if (!matchFocusOpen || !isMobile) {
       document.body.style.overflow = "";
@@ -1013,7 +1013,7 @@ export default function HockeyLiveApp() {
           </div>
 
           {contributeOpen && (
-            <div className={`scorerPanel communityPanel ${matchFocusOpen ? "eventOverlay" : ""}`}>
+            <div className={`scorerPanel communityPanel ${matchFocusOpen ? "eventOverlay focusEventSheet" : ""}`}>
               {matchFocusOpen && (
                 <button
                   className="overlayClose"
