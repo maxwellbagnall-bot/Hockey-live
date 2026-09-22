@@ -2263,3 +2263,92 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     grid-template-columns:1fr;
   }
 }
+
+
+/* Install Hockey Live */
+.installHockeyLive {
+  position:fixed;
+  left:50%;
+  bottom:calc(14px + env(safe-area-inset-bottom));
+  z-index:220;
+  width:min(520px,calc(100% - 24px));
+  transform:translateX(-50%);
+  display:grid;
+  grid-template-columns:46px minmax(0,1fr) auto;
+  gap:11px;
+  align-items:center;
+  padding:12px 42px 12px 12px;
+  border:1px solid rgba(24,226,139,.28);
+  border-radius:16px;
+  background:rgba(7,21,34,.97);
+  box-shadow:0 18px 60px rgba(0,0,0,.42);
+  backdrop-filter:blur(14px);
+}
+.installAppIcon {
+  display:grid;
+  place-items:center;
+  width:46px;
+  height:46px;
+  border:2px solid var(--green);
+  border-radius:11px;
+  background:#06111b;
+  color:var(--green);
+  font-weight:950;
+  letter-spacing:-.06em;
+}
+.installCopy {
+  min-width:0;
+  display:grid;
+  gap:3px;
+}
+.installCopy b {
+  color:white;
+  font-size:13px;
+}
+.installCopy span {
+  color:#9fb3c2;
+  font-size:11px;
+  line-height:1.35;
+}
+.installCopy strong {
+  color:white;
+}
+.installAction {
+  border:0;
+  border-radius:10px;
+  background:var(--green);
+  color:#042217;
+  padding:9px 11px;
+  font-size:11px;
+  font-weight:950;
+  cursor:pointer;
+}
+.installDismiss {
+  position:absolute;
+  top:6px;
+  right:8px;
+  border:0;
+  background:transparent;
+  color:#7890a2;
+  font-size:20px;
+  line-height:1;
+  cursor:pointer;
+}
+
+@media (max-width:480px) {
+  .installHockeyLive {
+    grid-template-columns:42px minmax(0,1fr) auto;
+    gap:9px;
+    padding:10px 36px 10px 10px;
+  }
+  .installAppIcon {
+    width:42px;
+    height:42px;
+  }
+  .installCopy b {
+    font-size:12px;
+  }
+  .installCopy span {
+    font-size:10px;
+  }
+}
