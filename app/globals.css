@@ -647,3 +647,216 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .createTeamGrid { grid-template-columns:1fr; }
   .createdActions { display:grid; grid-template-columns:1fr; }
 }
+
+
+/* Community reporting + Match Controller */
+.communityPanel {
+  margin-top:18px;
+}
+.communityExplainer {
+  margin:4px 0 18px;
+  color:#aebfcb;
+  line-height:1.6;
+}
+.communityMinute {
+  display:grid;
+  grid-template-columns:minmax(120px,180px) 1fr;
+  gap:14px;
+  align-items:end;
+  margin:16px 0;
+}
+.communityMinute label {
+  display:grid;
+  gap:7px;
+  color:#d9e5ed;
+  font-size:12px;
+  font-weight:900;
+}
+.communityMinute input {
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#071522;
+  color:white;
+  padding:11px 12px;
+}
+.communityMinute small {
+  color:var(--muted);
+  line-height:1.45;
+}
+.eventConfidenceRow {
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:8px;
+  margin-top:10px;
+}
+.reportCount,.lateReport {
+  font-size:11px;
+  font-weight:800;
+  color:#8fa4b5;
+}
+.lateReport {
+  color:var(--amber);
+}
+.sharedClock {
+  display:grid;
+  justify-items:center;
+  gap:4px;
+  margin:24px auto 18px;
+  padding:18px 22px;
+  width:min(330px,100%);
+  border:1px solid rgba(24,226,139,.22);
+  border-radius:20px;
+  background:rgba(24,226,139,.055);
+}
+.sharedClock>span {
+  color:var(--green);
+  font-weight:950;
+  letter-spacing:.08em;
+}
+.sharedClock>strong {
+  font-size:clamp(48px,9vw,78px);
+  line-height:.95;
+  letter-spacing:-.055em;
+}
+.sharedClock>small {
+  color:#91a8b9;
+  font-weight:700;
+}
+.controllerStrip {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:14px 16px;
+  margin:16px 0 0;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#081725;
+}
+.controllerStrip>div {
+  display:grid;
+  gap:6px;
+}
+.controllerBadge {
+  width:max-content;
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:5px 8px;
+  background:rgba(255,255,255,.06);
+  color:#9eb2c2;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.08em;
+}
+.controllerBadge.active {
+  background:rgba(24,226,139,.13);
+  color:var(--green);
+}
+.controllerBadge.available {
+  background:rgba(103,183,255,.11);
+  color:#8dccff;
+}
+.controllerClaimButton {
+  border:0;
+  border-radius:10px;
+  background:var(--green);
+  color:#042217;
+  padding:10px 12px;
+  font-weight:950;
+  cursor:pointer;
+}
+.controllerPanel {
+  margin-top:14px;
+  padding:16px;
+  border:1px solid rgba(24,226,139,.22);
+  border-radius:16px;
+  background:rgba(24,226,139,.055);
+}
+.controllerPanelHeader {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.controllerPanelHeader h3 {
+  margin:2px 0 0;
+}
+.controllerLiveDot {
+  color:var(--green);
+  font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
+}
+.controllerClockActions {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:16px;
+}
+.clockCorrection {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+  margin-top:12px;
+}
+.clockCorrection>span {
+  color:#9db0bf;
+  font-size:12px;
+  font-weight:800;
+  margin-right:2px;
+}
+.clockCorrection button,
+.releaseControlButton {
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#173149;
+  color:white;
+  padding:8px 10px;
+  cursor:pointer;
+  font-weight:800;
+}
+.releaseControlButton {
+  width:100%;
+  margin-top:12px;
+  background:transparent;
+  color:#aebfcb;
+}
+.controllerCreatedCallout {
+  margin:24px auto 0;
+  max-width:580px;
+  padding:18px;
+  border:1px solid rgba(24,226,139,.22);
+  border-radius:16px;
+  background:rgba(24,226,139,.055);
+}
+.controllerCreatedCallout>b {
+  display:block;
+  color:var(--green);
+  margin-bottom:7px;
+}
+.controllerCreatedCallout p {
+  margin:0;
+  color:#b4c5d1;
+  line-height:1.6;
+}
+
+@media (max-width:620px) {
+  .communityMinute {
+    grid-template-columns:1fr;
+    align-items:start;
+  }
+  .controllerStrip {
+    align-items:stretch;
+    flex-direction:column;
+  }
+  .controllerClaimButton {
+    width:100%;
+  }
+  .controllerClockActions {
+    grid-template-columns:1fr;
+  }
+}
