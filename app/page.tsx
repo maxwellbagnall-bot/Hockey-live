@@ -1,5 +1,5 @@
-import HockeyLiveApp from "../components/HockeyLiveApp";
+import OnboardingApp from "../components/OnboardingApp";
 
 export default function Home() {
-  return <HockeyLiveApp />;
+  return <OnboardingApp />;
 }
