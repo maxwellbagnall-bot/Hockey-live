@@ -122,7 +122,15 @@ export default function HockeyLiveApp() {
     }));
 
     setMatches(next);
-    setSelectedId((current) => current || next[0]?.id || "");
+    const requestedMatch =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search).get("match")
+        : null;
+    setSelectedId((current) =>
+      requestedMatch && next.some((match) => match.id === requestedMatch)
+        ? requestedMatch
+        : current || next[0]?.id || ""
+    );
     setBackendError("");
     setLoading(false);
   }
@@ -203,6 +211,15 @@ export default function HockeyLiveApp() {
     if (!selected) return;
     setMinuteDraft(selected.minute);
     setPeriodDraft(selected.period);
+
+    const savedPin = localStorage.getItem(`hockey_live_scorer_pin_${selected.id}`);
+    if (savedPin) {
+      setScorerPin(savedPin);
+      const requestedMatch = new URLSearchParams(window.location.search).get("match");
+      if (requestedMatch === selected.id) setScorerMode(true);
+    } else {
+      setScorerPin("");
+    }
   }, [selected?.id, selected?.minute, selected?.period]);
 
   async function saveClock(period = periodDraft, minute = minuteDraft) {
@@ -356,9 +373,9 @@ export default function HockeyLiveApp() {
           <a href="#match">Scores</a>
           <a href="#how">How it works</a>
         </nav>
-        <button className="ghostButton" onClick={() => setScorerMode((value) => !value)}>
-          {scorerMode ? "Exit scorer" : "Score a match"}
-        </button>
+        <a className="ghostButton" href="/create">
+          Create match
+        </a>
       </header>
 
       <section className="hero" id="top">
@@ -370,7 +387,7 @@ export default function HockeyLiveApp() {
           </p>
           <div className="heroActions">
             <a className="primaryButton" href="#live">See live scores</a>
-            <button className="secondaryButton" onClick={() => setScorerMode(true)}>Start scoring</button>
+            <a className="secondaryButton" href="/create">Create a match</a>
           </div>
           {backendError && <p className="heroCopy">Backend warning: {backendError}</p>}
         </div>
@@ -402,7 +419,13 @@ export default function HockeyLiveApp() {
               onClick={() => setSelectedId(match.id)}
             >
               <div className="matchMeta">
-                <span>{match.period === "FT" ? "Finished" : `${match.period} • ${match.minute}'`}</span>
+                <span>
+                  {match.status === "scheduled"
+                    ? "Scheduled"
+                    : match.period === "FT"
+                      ? "Finished"
+                      : `${match.period} • ${match.minute}'`}
+                </span>
                 <span className={`trust ${trustClass(match.trust)}`}>{match.trust}</span>
               </div>
               <div className="teamRow"><span>{match.home}</span><b>{match.homeScore}</b></div>
@@ -417,7 +440,14 @@ export default function HockeyLiveApp() {
         <section className="section matchCentre" id="match">
           <div className="scoreboard">
             <div className="scoreTopline">
-              <span className="liveTag"><span className="pulseDot" /> {selected.period === "FT" ? "FULL TIME" : "LIVE"}</span>
+              <span className="liveTag">
+                <span className="pulseDot" />
+                {selected.status === "scheduled"
+                  ? "SCHEDULED"
+                  : selected.period === "FT"
+                    ? "FULL TIME"
+                    : "LIVE"}
+              </span>
               <span className={`trust ${trustClass(selected.trust)}`}>{selected.trust}</span>
             </div>
             <p className="competition">{selected.competition}</p>
