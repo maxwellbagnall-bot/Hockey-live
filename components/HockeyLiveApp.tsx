@@ -49,7 +49,7 @@ type Match = {
 
 const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
   goal: { label: "Goal", icon: "GOAL" },
-  short_corner: { label: "Short corner", icon: "SC" },
+  short_corner: { label: "Penalty corner", icon: "PC" },
   green_card: { label: "Green card", icon: "GC" },
   yellow_card: { label: "Yellow card", icon: "YC" },
   red_card: { label: "Red card", icon: "RC" },
@@ -117,6 +117,9 @@ export default function HockeyLiveApp() {
   const [matchFocusOpen, setMatchFocusOpen] = useState(false);
   const [controllerControlsOpen, setControllerControlsOpen] = useState(false);
   const [controllerToolsOpen, setControllerToolsOpen] = useState(false);
+  const [pendingQuickEvent, setPendingQuickEvent] = useState<
+    "short_corner" | "green_card" | "yellow_card" | "red_card" | null
+  >(null);
   const [minuteDraft, setMinuteDraft] = useState(0);
   const [minuteEdited, setMinuteEdited] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
@@ -1072,7 +1075,7 @@ export default function HockeyLiveApp() {
                   <div key={side}>
                     <b>{side === "home" ? selected.home : selected.away}</b>
                     <button onClick={() => submitReport("goal", side)}>Goal</button>
-                    <button onClick={() => submitReport("short_corner", side)}>Short corner</button>
+                    <button onClick={() => submitReport("short_corner", side)}>Penalty corner</button>
                     <button onClick={() => submitReport("green_card", side)}>Green card</button>
                     <button onClick={() => submitReport("yellow_card", side)}>Yellow card</button>
                     <button onClick={() => submitReport("red_card", side)}>Red card</button>
@@ -1114,20 +1117,13 @@ export default function HockeyLiveApp() {
           <div className="matchFocusActions">
             {selected.status !== "finished" ? (
               <>
-                <div className="focusActionButtons">
+                <div className="focusActionButtons focusGoalButtons">
                   <button
                     className="focusGoalButton"
                     onClick={() => submitReport("goal", "home")}
                   >
                     <span>GOAL</span>
                     <b>{selected.home}</b>
-                  </button>
-
-                  <button
-                    className="focusEventButton"
-                    onClick={() => setContributeOpen(true)}
-                  >
-                    + EVENT
                   </button>
 
                   <button
@@ -1138,6 +1134,92 @@ export default function HockeyLiveApp() {
                     <b>{selected.away}</b>
                   </button>
                 </div>
+
+                <div className="focusEventStrip" aria-label="Quick match events">
+                  <button
+                    className={`focusEventShortcut ${pendingQuickEvent === "short_corner" ? "selected" : ""}`}
+                    aria-label="Penalty corner"
+                    title="Penalty corner"
+                    onClick={() =>
+                      setPendingQuickEvent((current) =>
+                        current === "short_corner" ? null : "short_corner"
+                      )
+                    }
+                  >
+                    PC
+                  </button>
+
+                  <button
+                    className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "green_card" ? "selected" : ""}`}
+                    aria-label="Green card"
+                    title="Green card"
+                    onClick={() =>
+                      setPendingQuickEvent((current) =>
+                        current === "green_card" ? null : "green_card"
+                      )
+                    }
+                  >
+                    <span className="miniCard green" />
+                  </button>
+
+                  <button
+                    className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "yellow_card" ? "selected" : ""}`}
+                    aria-label="Yellow card"
+                    title="Yellow card"
+                    onClick={() =>
+                      setPendingQuickEvent((current) =>
+                        current === "yellow_card" ? null : "yellow_card"
+                      )
+                    }
+                  >
+                    <span className="miniCard yellow" />
+                  </button>
+
+                  <button
+                    className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "red_card" ? "selected" : ""}`}
+                    aria-label="Red card"
+                    title="Red card"
+                    onClick={() =>
+                      setPendingQuickEvent((current) =>
+                        current === "red_card" ? null : "red_card"
+                      )
+                    }
+                  >
+                    <span className="miniCard red" />
+                  </button>
+                </div>
+
+                {pendingQuickEvent && (
+                  <div className="focusTeamChooser">
+                    <span>
+                      {pendingQuickEvent === "short_corner"
+                        ? "PC for:"
+                        : pendingQuickEvent === "green_card"
+                          ? "Green card:"
+                          : pendingQuickEvent === "yellow_card"
+                            ? "Yellow card:"
+                            : "Red card:"}
+                    </span>
+                    <button
+                      onClick={() => {
+                        const event = pendingQuickEvent;
+                        setPendingQuickEvent(null);
+                        void submitReport(event, "home");
+                      }}
+                    >
+                      {selected.home}
+                    </button>
+                    <button
+                      onClick={() => {
+                        const event = pendingQuickEvent;
+                        setPendingQuickEvent(null);
+                        void submitReport(event, "away");
+                      }}
+                    >
+                      {selected.away}
+                    </button>
+                  </div>
+                )}
 
                 <div className="focusCommentBox">
                   <input
