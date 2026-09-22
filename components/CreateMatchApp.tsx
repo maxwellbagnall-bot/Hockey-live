@@ -27,7 +27,7 @@ export default function CreateMatchApp() {
   const [venue, setVenue] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [created, setCreated] = useState<{ id: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string; existed: boolean } | null>(null);
 
   useEffect(() => {
     async function initialise() {
@@ -133,7 +133,10 @@ export default function CreateMatchApp() {
       return;
     }
 
-    setCreated({ id: row.match_id });
+    setCreated({
+      id: row.match_id,
+      existed: row.scorer_pin == null
+    });
   }
 
   if (!ready) {
@@ -234,19 +237,25 @@ export default function CreateMatchApp() {
           ) : (
             <div className="createdMatch">
               <span className="checkEmailIcon">✓</span>
-              <p className="eyebrow">MATCH CREATED</p>
+              <p className="eyebrow">
+                {created.existed ? "MATCH ALREADY EXISTS" : "MATCH CREATED"}
+              </p>
               <h1>{homeName} vs {awayName}</h1>
               <div className="controllerCreatedCallout">
-                <b>No scorer needs to be assigned now.</b>
+                <b>
+                  {created.existed
+                    ? "We found this fixture already."
+                    : "No scorer needs to be assigned now."}
+                </b>
                 <p>
-                  When the game is about to start, someone at the ground can open this
-                  match and tap <strong>Claim Match Controller</strong>. Everyone else
-                  can still report goals, cards, corners and comments.
+                  {created.existed
+                    ? "Rather than creating a duplicate, Hockey Live will take you to the existing Match Centre."
+                    : "When the game is about to start, someone at the ground can open this match and tap Claim Match Controller. Everyone else can still report goals, cards, corners and comments."}
                 </p>
               </div>
               <div className="createdActions">
                 <a className="primaryButton" href={`/live?match=${created.id}`}>
-                  Open match centre
+                  {created.existed ? "Open existing match" : "Open match centre"}
                 </a>
                 <button
                   className="secondaryButton"
