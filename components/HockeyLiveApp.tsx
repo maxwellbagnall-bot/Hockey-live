@@ -154,6 +154,22 @@ export default function HockeyLiveApp() {
     return localStorage.getItem("hockey_live_access_token");
   }
 
+  function openMatchCentre(matchId: string) {
+    setSelectedId(matchId);
+
+    const url = new URL(window.location.href);
+    url.searchParams.set("match", matchId);
+    url.hash = "match";
+    window.history.replaceState({}, "", url.toString());
+
+    window.setTimeout(() => {
+      document.getElementById("match")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+    }, 80);
+  }
+
   async function loadMyProfile() {
     const { data, error } = await supabase.rpc("get_my_hockey_profile", {
       p_access_token: getAccessToken() || null
@@ -319,6 +335,12 @@ export default function HockeyLiveApp() {
     const requestedMatch = new URLSearchParams(window.location.search).get("match");
     if (requestedMatch === selected.id) {
       setContributeOpen(true);
+      window.setTimeout(() => {
+        document.getElementById("match")?.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+      }, 120);
     }
   }, [selected?.id]);
 
@@ -614,7 +636,7 @@ export default function HockeyLiveApp() {
               <button
                 key={match.id}
                 className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
-                onClick={() => setSelectedId(match.id)}
+                onClick={() => openMatchCentre(match.id)}
               >
                 <div className="matchMeta">
                   <span>
