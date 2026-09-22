@@ -48,6 +48,7 @@ type Match = {
   startsAt: string | null;
   homeIsDemo: boolean;
   awayIsDemo: boolean;
+  matchIsDemo: boolean;
 };
 
 const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
@@ -178,7 +179,12 @@ export default function HockeyLiveApp() {
   const realMatches = useMemo(
     () =>
       matches
-        .filter((match) => !match.homeIsDemo && !match.awayIsDemo)
+        .filter(
+          (match) =>
+            !match.matchIsDemo &&
+            !match.homeIsDemo &&
+            !match.awayIsDemo
+        )
         .sort((a, b) => matchSortValue(a) - matchSortValue(b)),
     [matches]
   );
@@ -265,7 +271,7 @@ export default function HockeyLiveApp() {
       .from("matches")
       .select(
         `id, home_score, away_score, period, minute, status, verification, competition,
-         starts_at, controller_profile_id, controller_username, controller_last_seen_at,
+         starts_at, is_demo, controller_profile_id, controller_username, controller_last_seen_at,
          last_controller_username, clock_seconds, clock_running, clock_updated_at,
          home_team:teams!matches_home_team_id_fkey(id,name,is_demo),
          away_team:teams!matches_away_team_id_fkey(id,name,is_demo)`
@@ -300,7 +306,8 @@ export default function HockeyLiveApp() {
       clockUpdatedAt: row.clock_updated_at ?? new Date().toISOString(),
       startsAt: row.starts_at ?? null,
       homeIsDemo: Boolean(row.home_team?.is_demo),
-      awayIsDemo: Boolean(row.away_team?.is_demo)
+      awayIsDemo: Boolean(row.away_team?.is_demo),
+      matchIsDemo: Boolean(row.is_demo)
     }));
 
     setMatches(next);
@@ -311,7 +318,10 @@ export default function HockeyLiveApp() {
         : null;
 
     const firstReal = next.find(
-      (match) => !match.homeIsDemo && !match.awayIsDemo
+      (match) =>
+        !match.matchIsDemo &&
+        !match.homeIsDemo &&
+        !match.awayIsDemo
     );
 
     setSelectedId((current) =>
