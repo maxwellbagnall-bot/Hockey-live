@@ -45,6 +45,9 @@ type Match = {
   clockSeconds: number;
   clockRunning: boolean;
   clockUpdatedAt: string;
+  startsAt: string | null;
+  homeIsDemo: boolean;
+  awayIsDemo: boolean;
 };
 
 const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
@@ -108,6 +111,26 @@ function formatClock(seconds: number) {
   return `${minutes}:${String(secs).padStart(2, "0")}`;
 }
 
+function formatFixtureTime(value: string | null) {
+  if (!value) return "Scheduled";
+
+  const date = new Date(value);
+  return new Intl.DateTimeFormat("en-GB", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function matchSortValue(match: Match) {
+  const start = match.startsAt ? new Date(match.startsAt).getTime() : Number.MAX_SAFE_INTEGER;
+  if (match.status === "live") return -2_000_000_000_000_000;
+  if (match.status === "scheduled") return start;
+  return 2_000_000_000_000_000 - start;
+}
+
 export default function HockeyLiveApp() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -124,6 +147,7 @@ export default function HockeyLiveApp() {
   const [minuteEdited, setMinuteEdited] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [myUsername, setMyUsername] = useState("");
+  const [interestedTeamIds, setInterestedTeamIds] = useState<string[]>([]);
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
   const [backendError, setBackendError] = useState("");
@@ -149,6 +173,34 @@ export default function HockeyLiveApp() {
   const feed = useMemo(
     () => events.map((event) => ({ ...event, ...EVENT_META[event.kind] })),
     [events]
+  );
+
+  const realMatches = useMemo(
+    () =>
+      matches
+        .filter((match) => !match.homeIsDemo && !match.awayIsDemo)
+        .sort((a, b) => matchSortValue(a) - matchSortValue(b)),
+    [matches]
+  );
+
+  const myTeamMatches = useMemo(
+    () =>
+      realMatches.filter(
+        (match) =>
+          interestedTeamIds.includes(match.homeTeamId) ||
+          interestedTeamIds.includes(match.awayTeamId)
+      ),
+    [realMatches, interestedTeamIds]
+  );
+
+  const otherMatches = useMemo(
+    () =>
+      realMatches.filter(
+        (match) =>
+          !interestedTeamIds.includes(match.homeTeamId) &&
+          !interestedTeamIds.includes(match.awayTeamId)
+      ),
+    [realMatches, interestedTeamIds]
   );
 
   function announce(message: string) {
@@ -188,6 +240,23 @@ export default function HockeyLiveApp() {
     if (row?.profile_id) {
       setMyProfileId(row.profile_id);
       setMyUsername(row.username ?? "");
+
+      const { data: interests } = await supabase.rpc("get_my_team_interests", {
+        p_access_token: getAccessToken() || null
+      });
+
+      setInterestedTeamIds(
+        (interests ?? []).map((interest: any) => interest.team_id).filter(Boolean)
+      );
+    } else {
+      try {
+        const saved = JSON.parse(
+          localStorage.getItem("hockey_live_interests") || "[]"
+        );
+        if (Array.isArray(saved)) setInterestedTeamIds(saved);
+      } catch {
+        setInterestedTeamIds([]);
+      }
     }
   }
 
@@ -196,12 +265,12 @@ export default function HockeyLiveApp() {
       .from("matches")
       .select(
         `id, home_score, away_score, period, minute, status, verification, competition,
-         controller_profile_id, controller_username, controller_last_seen_at,
+         starts_at, controller_profile_id, controller_username, controller_last_seen_at,
          last_controller_username, clock_seconds, clock_running, clock_updated_at,
-         home_team:teams!matches_home_team_id_fkey(id,name),
-         away_team:teams!matches_away_team_id_fkey(id,name)`
+         home_team:teams!matches_home_team_id_fkey(id,name,is_demo),
+         away_team:teams!matches_away_team_id_fkey(id,name,is_demo)`
       )
-      .order("created_at", { ascending: true });
+      .order("starts_at", { ascending: true, nullsFirst: false });
 
     if (error) {
       setBackendError(error.message);
@@ -228,7 +297,10 @@ export default function HockeyLiveApp() {
       lastControllerUsername: row.last_controller_username ?? null,
       clockSeconds: row.clock_seconds ?? 0,
       clockRunning: Boolean(row.clock_running),
-      clockUpdatedAt: row.clock_updated_at ?? new Date().toISOString()
+      clockUpdatedAt: row.clock_updated_at ?? new Date().toISOString(),
+      startsAt: row.starts_at ?? null,
+      homeIsDemo: Boolean(row.home_team?.is_demo),
+      awayIsDemo: Boolean(row.away_team?.is_demo)
     }));
 
     setMatches(next);
@@ -238,10 +310,14 @@ export default function HockeyLiveApp() {
         ? new URLSearchParams(window.location.search).get("match")
         : null;
 
+    const firstReal = next.find(
+      (match) => !match.homeIsDemo && !match.awayIsDemo
+    );
+
     setSelectedId((current) =>
       requestedMatch && next.some((match) => match.id === requestedMatch)
         ? requestedMatch
-        : current || next[0]?.id || ""
+        : current || firstReal?.id || next[0]?.id || ""
     );
 
     setBackendError("");
@@ -628,7 +704,7 @@ export default function HockeyLiveApp() {
           <span className="pulseDot" />
           <strong>LIVE NOW</strong>
           <p>
-            {matches.filter((match) => match.status === "live").length} matches
+            {realMatches.filter((match) => match.status === "live").length} matches
             reporting live
           </p>
 
@@ -644,51 +720,109 @@ export default function HockeyLiveApp() {
       <section className="section" id="live">
         <div className="sectionHeading">
           <div>
-            <p className="eyebrow">LIVE FEED</p>
-            <h2>Matches happening now</h2>
+            <p className="eyebrow">YOUR HOCKEY</p>
+            <h2>{myTeamMatches.length ? "Your teams" : "Matches"}</h2>
           </div>
           <span className="demoPill">Community powered</span>
         </div>
 
-        <div className="matchGrid">
-          {matches.map((match) => {
-            const clock = sharedClockSeconds(match, nowTick);
-            return (
-              <button
-                key={match.id}
-                className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
-                onClick={() => openMatchCentre(match.id)}
-              >
-                <div className="matchMeta">
-                  <span>
-                    {match.status === "scheduled"
-                      ? "Scheduled"
-                      : match.period === "FT"
-                        ? "Finished"
-                        : `${match.period} • ${formatClock(clock)}`}
-                  </span>
-                  <span className={`trust ${trustClass(match.trust)}`}>
-                    {match.trust}
-                  </span>
-                </div>
+        {myTeamMatches.length > 0 && (
+          <div className="matchGrid">
+            {myTeamMatches.map((match) => {
+              const clock = sharedClockSeconds(match, nowTick);
+              return (
+                <button
+                  key={match.id}
+                  className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+                  onClick={() => openMatchCentre(match.id)}
+                >
+                  <div className="matchMeta">
+                    <span>
+                      {match.status === "scheduled"
+                        ? formatFixtureTime(match.startsAt)
+                        : match.period === "FT"
+                          ? "Finished"
+                          : `${match.period} • ${formatClock(clock)}`}
+                    </span>
+                    <span className={`trust ${trustClass(match.trust)}`}>
+                      {match.trust}
+                    </span>
+                  </div>
 
-                <div className="teamRow">
-                  <span>{match.home}</span><b>{match.homeScore}</b>
-                </div>
-                <div className="teamRow">
-                  <span>{match.away}</span><b>{match.awayScore}</b>
-                </div>
+                  <div className="teamRow">
+                    <span>{match.home}</span><b>{match.homeScore}</b>
+                  </div>
+                  <div className="teamRow">
+                    <span>{match.away}</span><b>{match.awayScore}</b>
+                  </div>
 
-                <div className="cardFooter">
-                  {match.controllerUsername
-                    ? `Controlled by @${match.controllerUsername}`
-                    : "Open match centre"}{" "}
-                  <span>→</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+                  <div className="cardFooter">
+                    {match.controllerUsername
+                      ? `Controlled by @${match.controllerUsername}`
+                      : match.status === "scheduled"
+                        ? "Open fixture"
+                        : "Open match centre"}{" "}
+                    <span>→</span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {otherMatches.length > 0 && (
+          <div className="otherMatchesBlock">
+            {myTeamMatches.length > 0 && <h3>Other matches</h3>}
+            <div className="matchGrid">
+              {otherMatches.map((match) => {
+                const clock = sharedClockSeconds(match, nowTick);
+                return (
+                  <button
+                    key={match.id}
+                    className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+                    onClick={() => openMatchCentre(match.id)}
+                  >
+                    <div className="matchMeta">
+                      <span>
+                        {match.status === "scheduled"
+                          ? formatFixtureTime(match.startsAt)
+                          : match.period === "FT"
+                            ? "Finished"
+                            : `${match.period} • ${formatClock(clock)}`}
+                      </span>
+                      <span className={`trust ${trustClass(match.trust)}`}>
+                        {match.trust}
+                      </span>
+                    </div>
+
+                    <div className="teamRow">
+                      <span>{match.home}</span><b>{match.homeScore}</b>
+                    </div>
+                    <div className="teamRow">
+                      <span>{match.away}</span><b>{match.awayScore}</b>
+                    </div>
+
+                    <div className="cardFooter">
+                      {match.controllerUsername
+                        ? `Controlled by @${match.controllerUsername}`
+                        : match.status === "scheduled"
+                          ? "Open fixture"
+                          : "Open match centre"}{" "}
+                      <span>→</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {realMatches.length === 0 && (
+          <div className="emptyFixtureState">
+            <b>No matches yet.</b>
+            <span>Create the first fixture and it will appear here.</span>
+          </div>
+        )}
       </section>
 
       {selected && (
