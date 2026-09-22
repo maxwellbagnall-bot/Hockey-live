@@ -749,7 +749,7 @@ export default function HockeyLiveApp() {
                   <button onClick={() => controlClock("next_period")}>
                     {selected.period === "Q4" ? "FT" : "End Q"}
                   </button>
-                  <button onClick={() => setControllerToolsOpen(true)}>•••</button>
+                  <button onClick={() => setControllerControlsOpen(true)}>•••</button>
                 </>
               ) : selected.controllerProfileId && !selectedControllerStale ? (
                 <span className="focusControllerLabel">
@@ -1165,15 +1165,15 @@ export default function HockeyLiveApp() {
             )}
           </div>
 
-          {controllerToolsOpen && iAmController && (
-            <div className="focusSheetBackdrop" onClick={() => setControllerToolsOpen(false)}>
+          {controllerControlsOpen && iAmController && (
+            <div className="focusSheetBackdrop" onClick={() => setControllerControlsOpen(false)}>
               <div className="focusSheet" onClick={(event) => event.stopPropagation()}>
                 <div className="focusSheetHeader">
                   <div>
                     <p className="eyebrow">MATCH CONTROLLER</p>
                     <h3>Clock tools</h3>
                   </div>
-                  <button onClick={() => setControllerToolsOpen(false)}>×</button>
+                  <button onClick={() => setControllerControlsOpen(false)}>×</button>
                 </div>
 
                 <div className="clockCorrection">
@@ -1195,7 +1195,7 @@ export default function HockeyLiveApp() {
                 </div>
 
                 <button className="releaseControlButton" onClick={() => {
-                  setControllerToolsOpen(false);
+                  setControllerControlsOpen(false);
                   void releaseControl();
                 }}>
                   Hand back Match Control
