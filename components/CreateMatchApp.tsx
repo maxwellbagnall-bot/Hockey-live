@@ -27,7 +27,7 @@ export default function CreateMatchApp() {
   const [venue, setVenue] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [created, setCreated] = useState<{ id: string; pin: string } | null>(null);
+  const [created, setCreated] = useState<{ id: string } | null>(null);
 
   useEffect(() => {
     async function initialise() {
@@ -128,17 +128,12 @@ export default function CreateMatchApp() {
     }
 
     const row = Array.isArray(data) ? data[0] : data;
-    if (!row?.match_id || !row?.scorer_pin) {
-      setMessage("The match was created but we couldn't retrieve its scorer PIN.");
+    if (!row?.match_id) {
+      setMessage("The match was created but we couldn't open it.");
       return;
     }
 
-    localStorage.setItem(
-      `hockey_live_scorer_pin_${row.match_id}`,
-      row.scorer_pin
-    );
-
-    setCreated({ id: row.match_id, pin: row.scorer_pin });
+    setCreated({ id: row.match_id });
   }
 
   if (!ready) {
@@ -173,8 +168,8 @@ export default function CreateMatchApp() {
               <p className="eyebrow">REPORT A MATCH</p>
               <h1>Create a match</h1>
               <p className="createMatchIntro">
-                Set up the fixture now. Hockey Live will create a private scorer PIN
-                for whoever is reporting from the sideline.
+                Set up the fixture in advance. At match time, anyone at the ground
+                can claim Match Controller and run the shared live clock.
               </p>
 
               <form className="createMatchForm" onSubmit={createMatch}>
@@ -241,12 +236,14 @@ export default function CreateMatchApp() {
               <span className="checkEmailIcon">✓</span>
               <p className="eyebrow">MATCH CREATED</p>
               <h1>{homeName} vs {awayName}</h1>
-              <p>Your scorer PIN is:</p>
-              <div className="scorerPinDisplay">{created.pin}</div>
-              <p className="pinHelp">
-                Give this PIN only to the person updating the match. It has also been
-                saved on this device.
-              </p>
+              <div className="controllerCreatedCallout">
+                <b>No scorer needs to be assigned now.</b>
+                <p>
+                  When the game is about to start, someone at the ground can open this
+                  match and tap <strong>Claim Match Controller</strong>. Everyone else
+                  can still report goals, cards, corners and comments.
+                </p>
+              </div>
               <div className="createdActions">
                 <a className="primaryButton" href={`/live?match=${created.id}`}>
                   Open match centre
