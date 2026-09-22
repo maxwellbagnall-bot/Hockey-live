@@ -28,6 +28,10 @@ type ExistingFixture = {
   startsAt: string;
   side: "home" | "away";
   opponent: string;
+  opponentId: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  venue: string;
   status: "scheduled" | "live" | "finished";
 };
 
@@ -45,7 +49,15 @@ export default function SeasonSetupApp() {
   const [nextId, setNextId] = useState(2);
   const [busy, setBusy] = useState(false);
   const [existingFixtures, setExistingFixtures] = useState<ExistingFixture[]>([]);
+  const [manageableFixtureIds, setManageableFixtureIds] = useState<string[]>([]);
   const [loadingExisting, setLoadingExisting] = useState(false);
+  const [editingFixtureId, setEditingFixtureId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("14:00");
+  const [editSide, setEditSide] = useState<"home" | "away">("home");
+  const [editOpponentId, setEditOpponentId] = useState("");
+  const [editVenue, setEditVenue] = useState("");
+  const [fixtureBusy, setFixtureBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState<{
     created: number;
@@ -149,15 +161,25 @@ export default function SeasonSetupApp() {
 
     setLoadingExisting(true);
 
-    const { data, error } = await supabase
-      .from("matches")
-      .select(
-        "id,starts_at,status,home_team_id,away_team_id,is_demo,home_team:teams!matches_home_team_id_fkey(id,name),away_team:teams!matches_away_team_id_fkey(id,name)"
-      )
-      .eq("competition_id", competitionId)
-      .eq("is_demo", false)
-      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
-      .order("starts_at", { ascending: true });
+    const accessToken =
+      localStorage.getItem("hockey_live_access_token") || null;
+
+    const [{ data, error }, { data: manageable }] = await Promise.all([
+      supabase
+        .from("matches")
+        .select(
+          "id,starts_at,status,venue,home_team_id,away_team_id,is_demo,cancelled_at,home_team:teams!matches_home_team_id_fkey(id,name),away_team:teams!matches_away_team_id_fkey(id,name)"
+        )
+        .eq("competition_id", competitionId)
+        .eq("is_demo", false)
+        .is("cancelled_at", null)
+        .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+        .order("starts_at", { ascending: true }),
+      supabase.rpc("get_my_manageable_fixture_ids", {
+        p_access_token: accessToken,
+        p_competition_id: competitionId
+      })
+    ]);
 
     setLoadingExisting(false);
 
@@ -165,6 +187,10 @@ export default function SeasonSetupApp() {
       setMessage(error.message);
       return;
     }
+
+    setManageableFixtureIds(
+      (manageable ?? []).map((row: any) => row.match_id).filter(Boolean)
+    );
 
     const next: ExistingFixture[] = (data ?? []).map((match: any) => {
       const isHome = match.home_team_id === teamId;
@@ -175,6 +201,12 @@ export default function SeasonSetupApp() {
         opponent: isHome
           ? match.away_team?.name ?? "Opponent"
           : match.home_team?.name ?? "Opponent",
+        opponentId: isHome
+          ? match.away_team_id
+          : match.home_team_id,
+        homeTeamId: match.home_team_id,
+        awayTeamId: match.away_team_id,
+        venue: match.venue ?? "",
         status: match.status
       };
     });
@@ -188,6 +220,7 @@ export default function SeasonSetupApp() {
   }, [ready, competitionId, teamId]);
 
   function changeCompetition(id: string) {
+    setEditingFixtureId(null);
     const nextTeams = teams.filter((team) => team.competition_id === id);
     const nextTeam = nextTeams[0];
 
@@ -205,6 +238,7 @@ export default function SeasonSetupApp() {
   }
 
   function changeTeam(id: string) {
+    setEditingFixtureId(null);
     setTeamId(id);
     const fallback = availableTeams.find((team) => team.id !== id)?.id ?? "";
 
@@ -240,6 +274,73 @@ export default function SeasonSetupApp() {
     setRows((current) =>
       current.length === 1 ? current : current.filter((row) => row.id !== id)
     );
+  }
+
+  function beginEditFixture(fixture: ExistingFixture) {
+    const local = new Date(
+      new Date(fixture.startsAt).getTime() -
+        new Date(fixture.startsAt).getTimezoneOffset() * 60000
+    );
+
+    setEditingFixtureId(fixture.id);
+    setEditDate(local.toISOString().slice(0, 10));
+    setEditTime(local.toISOString().slice(11, 16));
+    setEditSide(fixture.side);
+    setEditOpponentId(fixture.opponentId);
+    setEditVenue(fixture.venue);
+    setMessage("");
+  }
+
+  async function saveFixtureEdit() {
+    if (!editingFixtureId || !editDate || !editTime || !editOpponentId) return;
+
+    const homeTeamId = editSide === "home" ? teamId : editOpponentId;
+    const awayTeamId = editSide === "home" ? editOpponentId : teamId;
+    const start = new Date(`${editDate}T${editTime}:00`);
+
+    setFixtureBusy(true);
+    const { error } = await supabase.rpc("update_hockey_fixture", {
+      p_access_token:
+        localStorage.getItem("hockey_live_access_token") || null,
+      p_match_id: editingFixtureId,
+      p_home_team_id: homeTeamId,
+      p_away_team_id: awayTeamId,
+      p_starts_at: start.toISOString(),
+      p_venue: editVenue.trim()
+    });
+    setFixtureBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setEditingFixtureId(null);
+    setMessage("Fixture updated.");
+    await loadExistingFixtures();
+  }
+
+  async function cancelFixture(matchId: string) {
+    if (!window.confirm("Cancel this fixture? It will disappear from the normal fixture list.")) {
+      return;
+    }
+
+    setFixtureBusy(true);
+    const { error } = await supabase.rpc("cancel_hockey_fixture", {
+      p_access_token:
+        localStorage.getItem("hockey_live_access_token") || null,
+      p_match_id: matchId
+    });
+    setFixtureBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    if (editingFixtureId === matchId) setEditingFixtureId(null);
+    setMessage("Fixture cancelled.");
+    await loadExistingFixtures();
   }
 
   async function createSeason() {
@@ -387,30 +488,124 @@ export default function SeasonSetupApp() {
               <div className="existingFixtureList">
                 {existingFixtures.map((fixture) => {
                   const date = new Date(fixture.startsAt);
+                  const canManage = manageableFixtureIds.includes(fixture.id);
+
                   return (
-                    <a
-                      key={fixture.id}
-                      className="existingFixtureRow"
-                      href={`/live?match=${fixture.id}`}
-                    >
-                      <span className="existingFixtureDate">
-                        {new Intl.DateTimeFormat("en-GB", {
-                          day: "2-digit",
-                          month: "short"
-                        }).format(date)}
-                      </span>
-                      <span className="existingFixtureSide">
-                        {fixture.side === "home" ? "H" : "A"}
-                      </span>
-                      <b>{fixture.opponent}</b>
-                      <span className="existingFixtureTime">
-                        {new Intl.DateTimeFormat("en-GB", {
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        }).format(date)}
-                      </span>
-                      <span className="existingFixtureStatus">{fixture.status}</span>
-                    </a>
+                    <div className="existingFixtureItem" key={fixture.id}>
+                      <div className="existingFixtureRow">
+                        <a
+                          className="existingFixtureOpen"
+                          href={`/live?match=${fixture.id}`}
+                        >
+                          <span className="existingFixtureDate">
+                            {new Intl.DateTimeFormat("en-GB", {
+                              day: "2-digit",
+                              month: "short"
+                            }).format(date)}
+                          </span>
+                          <span className="existingFixtureSide">
+                            {fixture.side === "home" ? "H" : "A"}
+                          </span>
+                          <b>{fixture.opponent}</b>
+                          <span className="existingFixtureTime">
+                            {new Intl.DateTimeFormat("en-GB", {
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            }).format(date)}
+                          </span>
+                          <span className="existingFixtureStatus">{fixture.status}</span>
+                        </a>
+
+                        {canManage && (
+                          <button
+                            className="fixtureEditButton"
+                            onClick={() =>
+                              editingFixtureId === fixture.id
+                                ? setEditingFixtureId(null)
+                                : beginEditFixture(fixture)
+                            }
+                          >
+                            {editingFixtureId === fixture.id ? "Close" : "Edit"}
+                          </button>
+                        )}
+                      </div>
+
+                      {editingFixtureId === fixture.id && canManage && (
+                        <div className="fixtureEditPanel">
+                          <div className="fixtureEditGrid">
+                            <label>
+                              Date
+                              <input
+                                type="date"
+                                value={editDate}
+                                onChange={(event) => setEditDate(event.target.value)}
+                              />
+                            </label>
+                            <label>
+                              Time
+                              <input
+                                type="time"
+                                value={editTime}
+                                onChange={(event) => setEditTime(event.target.value)}
+                              />
+                            </label>
+                            <label>
+                              Home / Away
+                              <select
+                                value={editSide}
+                                onChange={(event) =>
+                                  setEditSide(event.target.value as "home" | "away")
+                                }
+                              >
+                                <option value="home">Home</option>
+                                <option value="away">Away</option>
+                              </select>
+                            </label>
+                            <label>
+                              Opponent
+                              <select
+                                value={editOpponentId}
+                                onChange={(event) =>
+                                  setEditOpponentId(event.target.value)
+                                }
+                              >
+                                {opponents.map((team) => (
+                                  <option key={team.id} value={team.id}>
+                                    {team.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          </div>
+
+                          <label className="fixtureVenueEdit">
+                            Venue <span>optional</span>
+                            <input
+                              value={editVenue}
+                              onChange={(event) => setEditVenue(event.target.value)}
+                              placeholder="Venue"
+                            />
+                          </label>
+
+                          <div className="fixtureEditActions">
+                            <button
+                              className="primaryButton"
+                              disabled={fixtureBusy}
+                              onClick={() => void saveFixtureEdit()}
+                            >
+                              Save changes
+                            </button>
+                            <button
+                              className="fixtureCancelButton"
+                              disabled={fixtureBusy}
+                              onClick={() => void cancelFixture(fixture.id)}
+                            >
+                              Cancel fixture
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
