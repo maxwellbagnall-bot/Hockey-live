@@ -23,6 +23,7 @@ type MatchEvent = {
   confidence: Confidence;
   reportCount: number;
   isLate: boolean;
+  isDisallowed: boolean;
 };
 
 type Match = {
@@ -149,6 +150,8 @@ export default function HockeyLiveApp() {
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [myUsername, setMyUsername] = useState("");
   const [interestedTeamIds, setInterestedTeamIds] = useState<string[]>([]);
+  const [myReportedEventIds, setMyReportedEventIds] = useState<string[]>([]);
+  const [canCorrectEvents, setCanCorrectEvents] = useState(false);
   const [toast, setToast] = useState("");
   const [loading, setLoading] = useState(true);
   const [backendError, setBackendError] = useState("");
@@ -271,11 +274,12 @@ export default function HockeyLiveApp() {
       .from("matches")
       .select(
         `id, home_score, away_score, period, minute, status, verification, competition,
-         starts_at, is_demo, controller_profile_id, controller_username, controller_last_seen_at,
+         starts_at, is_demo, cancelled_at, controller_profile_id, controller_username, controller_last_seen_at,
          last_controller_username, clock_seconds, clock_running, clock_updated_at,
          home_team:teams!matches_home_team_id_fkey(id,name,is_demo),
          away_team:teams!matches_away_team_id_fkey(id,name,is_demo)`
       )
+      .is("cancelled_at", null)
       .order("starts_at", { ascending: true, nullsFirst: false });
 
     if (error) {
@@ -340,9 +344,10 @@ export default function HockeyLiveApp() {
     const { data, error } = await supabase
       .from("match_events")
       .select(
-        "id,event_type,team_id,minute,note,confidence,report_count,is_late,created_at"
+        "id,event_type,team_id,minute,note,confidence,report_count,is_late,is_disallowed,is_void,created_at"
       )
       .eq("match_id", matchId)
+      .eq("is_void", false)
       .order("minute", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
 
@@ -368,10 +373,102 @@ export default function HockeyLiveApp() {
         `${EVENT_META[row.event_type as EventKind]?.label ?? "Update"} reported`,
       confidence: prettyTrust(row.confidence),
       reportCount: row.report_count ?? 1,
-      isLate: Boolean(row.is_late)
+      isLate: Boolean(row.is_late),
+      isDisallowed: Boolean(row.is_disallowed)
     }));
 
     setEvents(next);
+  }
+
+  async function loadEventPermissions(matchId: string) {
+    const accessToken = getAccessToken() || null;
+
+    const [{ data: permissions }, { data: mine }] = await Promise.all([
+      supabase.rpc("get_match_permissions", {
+        p_access_token: accessToken,
+        p_match_id: matchId
+      }),
+      supabase.rpc("get_my_reported_event_ids", {
+        p_access_token: accessToken,
+        p_match_id: matchId
+      })
+    ]);
+
+    const permissionRow = Array.isArray(permissions) ? permissions[0] : permissions;
+    setCanCorrectEvents(Boolean(permissionRow?.can_correct));
+    setMyReportedEventIds(
+      (mine ?? []).map((row: any) => row.event_id).filter(Boolean)
+    );
+  }
+
+  async function undoMyReport(eventId: string) {
+    if (!selected) return;
+
+    const { data, error } = await supabase.rpc("undo_my_match_report", {
+      p_access_token: getAccessToken() || null,
+      p_event_id: eventId
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    const result = Array.isArray(data) ? data[0] : data;
+    await Promise.all([
+      loadMatches(),
+      loadEvents(selected.id),
+      loadEventPermissions(selected.id)
+    ]);
+
+    announce(
+      result?.removed_event
+        ? "Your report was undone"
+        : "Your report was removed; other reports still confirm the event"
+    );
+  }
+
+  async function removeEvent(eventId: string) {
+    if (!selected) return;
+    if (!window.confirm("Remove this event as a correction?")) return;
+
+    const { error } = await supabase.rpc("void_match_event", {
+      p_access_token: getAccessToken() || null,
+      p_event_id: eventId
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    await Promise.all([
+      loadMatches(),
+      loadEvents(selected.id),
+      loadEventPermissions(selected.id)
+    ]);
+    announce("Event corrected");
+  }
+
+  async function disallowGoal(eventId: string) {
+    if (!selected) return;
+
+    const { error } = await supabase.rpc("disallow_goal", {
+      p_access_token: getAccessToken() || null,
+      p_event_id: eventId
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    await Promise.all([
+      loadMatches(),
+      loadEvents(selected.id),
+      loadEventPermissions(selected.id)
+    ]);
+    announce("Goal disallowed — score corrected");
   }
 
   useEffect(() => {
@@ -414,6 +511,7 @@ export default function HockeyLiveApp() {
     if (!selectedId) return;
 
     void loadEvents(selectedId);
+    void loadEventPermissions(selectedId);
 
     const channel = supabase
       .channel(`hockey-live-events-${selectedId}`)
@@ -425,7 +523,10 @@ export default function HockeyLiveApp() {
           table: "match_events",
           filter: `match_id=eq.${selectedId}`
         },
-        () => void loadEvents(selectedId)
+        () => {
+          void loadEvents(selectedId);
+          void loadEventPermissions(selectedId);
+        }
       )
       .subscribe();
 
@@ -599,7 +700,11 @@ export default function HockeyLiveApp() {
     setComment("");
     setMinuteEdited(false);
 
-    await Promise.all([loadMatches(), loadEvents(selected.id)]);
+    await Promise.all([
+      loadMatches(),
+      loadEvents(selected.id),
+      loadEventPermissions(selected.id)
+    ]);
 
     const returned = Array.isArray(data) ? data[0] : data;
     const count = returned?.report_count ?? 1;
@@ -1460,32 +1565,82 @@ export default function HockeyLiveApp() {
               )}
 
               {feed.map((event) => (
-                <article key={event.id} className="eventRow">
-                  <span className={`eventIcon ${event.kind}`}>{event.icon}</span>
+                <article
+                  key={event.id}
+                  className={`eventRow ${event.isDisallowed ? "disallowedEvent" : ""}`}
+                >
+                  <span className={`eventIcon ${event.kind}`}>
+                    {event.isDisallowed && event.kind === "goal" ? "NO" : event.icon}
+                  </span>
 
                   <div>
                     <div className="eventMeta">
-                      <b>{event.label}</b>
+                      <b>
+                        {event.isDisallowed && event.kind === "goal"
+                          ? "Goal disallowed"
+                          : event.label}
+                      </b>
                       <span>{event.minute}'</span>
                     </div>
 
-                    <p>{event.text}</p>
+                    <p>
+                      {event.isDisallowed && event.kind === "goal"
+                        ? "The original goal was overturned. The score has been corrected."
+                        : event.text}
+                    </p>
 
                     <div className="eventConfidenceRow">
-                      <span className={`trust ${trustClass(event.confidence)}`}>
-                        {event.confidence}
-                      </span>
-
-                      {event.kind !== "comment" && event.reportCount > 1 && (
-                        <span className="reportCount">
-                          {event.reportCount} independent reports
+                      {!event.isDisallowed && (
+                        <span className={`trust ${trustClass(event.confidence)}`}>
+                          {event.confidence}
                         </span>
                       )}
 
-                      {event.isLate && (
+                      {event.isDisallowed && (
+                        <span className="disallowedBadge">DISALLOWED</span>
+                      )}
+
+                      {!event.isDisallowed &&
+                        event.kind !== "comment" &&
+                        event.reportCount > 1 && (
+                          <span className="reportCount">
+                            {event.reportCount} independent reports
+                          </span>
+                        )}
+
+                      {event.isLate && !event.isDisallowed && (
                         <span className="lateReport">Reported late</span>
                       )}
                     </div>
+
+                    {!event.isDisallowed &&
+                      (myReportedEventIds.includes(event.id) || canCorrectEvents) && (
+                        <div className="eventCorrectionActions">
+                          {myReportedEventIds.includes(event.id) && (
+                            <button onClick={() => void undoMyReport(event.id)}>
+                              Undo my report
+                            </button>
+                          )}
+
+                          {canCorrectEvents && event.kind === "goal" && (
+                            <button
+                              className="disallowGoalButton"
+                              onClick={() => void disallowGoal(event.id)}
+                            >
+                              Disallow goal
+                            </button>
+                          )}
+
+                          {canCorrectEvents && (
+                            <button
+                              className="removeEventButton"
+                              onClick={() => void removeEvent(event.id)}
+                            >
+                              Remove mistake
+                            </button>
+                          )}
+                        </div>
+                      )}
                   </div>
                 </article>
               ))}
