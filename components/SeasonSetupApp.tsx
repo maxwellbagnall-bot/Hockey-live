@@ -23,6 +23,14 @@ type FixtureRow = {
   opponentId: string;
 };
 
+type ExistingFixture = {
+  id: string;
+  startsAt: string;
+  side: "home" | "away";
+  opponent: string;
+  status: "scheduled" | "live" | "finished";
+};
+
 function blankRow(id: number, opponentId = ""): FixtureRow {
   return { id, date: "", time: "14:00", side: "home", opponentId };
 }
@@ -36,6 +44,8 @@ export default function SeasonSetupApp() {
   const [rows, setRows] = useState<FixtureRow[]>([]);
   const [nextId, setNextId] = useState(2);
   const [busy, setBusy] = useState(false);
+  const [existingFixtures, setExistingFixtures] = useState<ExistingFixture[]>([]);
+  const [loadingExisting, setLoadingExisting] = useState(false);
   const [message, setMessage] = useState("");
   const [summary, setSummary] = useState<{
     created: number;
@@ -130,6 +140,52 @@ export default function SeasonSetupApp() {
     () => availableTeams.filter((team) => team.id !== teamId),
     [availableTeams, teamId]
   );
+
+  async function loadExistingFixtures() {
+    if (!competitionId || !teamId) {
+      setExistingFixtures([]);
+      return;
+    }
+
+    setLoadingExisting(true);
+
+    const { data, error } = await supabase
+      .from("matches")
+      .select(
+        "id,starts_at,status,home_team_id,away_team_id,is_demo,home_team:teams!matches_home_team_id_fkey(id,name),away_team:teams!matches_away_team_id_fkey(id,name)"
+      )
+      .eq("competition_id", competitionId)
+      .eq("is_demo", false)
+      .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
+      .order("starts_at", { ascending: true });
+
+    setLoadingExisting(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    const next: ExistingFixture[] = (data ?? []).map((match: any) => {
+      const isHome = match.home_team_id === teamId;
+      return {
+        id: match.id,
+        startsAt: match.starts_at,
+        side: isHome ? "home" : "away",
+        opponent: isHome
+          ? match.away_team?.name ?? "Opponent"
+          : match.home_team?.name ?? "Opponent",
+        status: match.status
+      };
+    });
+
+    setExistingFixtures(next);
+  }
+
+  useEffect(() => {
+    if (!ready) return;
+    void loadExistingFixtures();
+  }, [ready, competitionId, teamId]);
 
   function changeCompetition(id: string) {
     const nextTeams = teams.filter((team) => team.competition_id === id);
@@ -237,6 +293,13 @@ export default function SeasonSetupApp() {
 
     setBusy(false);
     setSummary({ created, existing, failed });
+    await loadExistingFixtures();
+
+    if (failed === 0) {
+      const fallbackOpponent = opponents[0]?.id ?? "";
+      setRows([blankRow(nextId, fallbackOpponent)]);
+      setNextId((value) => value + 1);
+    }
   }
 
   if (!ready) {
@@ -300,6 +363,63 @@ export default function SeasonSetupApp() {
                 ))}
               </select>
             </label>
+          </div>
+
+          <div className="existingSeasonBlock">
+            <div className="existingSeasonHeader">
+              <div>
+                <p className="eyebrow">ALREADY ADDED</p>
+                <h3>
+                  {loadingExisting
+                    ? "Checking fixtures…"
+                    : `${existingFixtures.length} fixture${existingFixtures.length === 1 ? "" : "s"} in Hockey Live`}
+                </h3>
+              </div>
+            </div>
+
+            {!loadingExisting && existingFixtures.length === 0 && (
+              <p className="existingSeasonEmpty">
+                No fixtures have been added for this team yet.
+              </p>
+            )}
+
+            {existingFixtures.length > 0 && (
+              <div className="existingFixtureList">
+                {existingFixtures.map((fixture) => {
+                  const date = new Date(fixture.startsAt);
+                  return (
+                    <a
+                      key={fixture.id}
+                      className="existingFixtureRow"
+                      href={`/live?match=${fixture.id}`}
+                    >
+                      <span className="existingFixtureDate">
+                        {new Intl.DateTimeFormat("en-GB", {
+                          day: "2-digit",
+                          month: "short"
+                        }).format(date)}
+                      </span>
+                      <span className="existingFixtureSide">
+                        {fixture.side === "home" ? "H" : "A"}
+                      </span>
+                      <b>{fixture.opponent}</b>
+                      <span className="existingFixtureTime">
+                        {new Intl.DateTimeFormat("en-GB", {
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        }).format(date)}
+                      </span>
+                      <span className="existingFixtureStatus">{fixture.status}</span>
+                    </a>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div className="seasonAddMoreHeading">
+            <p className="eyebrow">ADD MORE</p>
+            <h3>Missing fixtures</h3>
           </div>
 
           <div className="seasonFixtureList">
