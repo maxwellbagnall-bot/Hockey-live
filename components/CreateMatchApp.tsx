@@ -175,6 +175,14 @@ export default function CreateMatchApp() {
                 can claim Match Controller and run the shared live clock.
               </p>
 
+              <a className="seasonSetupLink" href="/create/season">
+                <span>
+                  <b>Setting up a whole team?</b>
+                  Add the season’s fixtures in one go.
+                </span>
+                <strong>Season setup →</strong>
+              </a>
+
               <form className="createMatchForm" onSubmit={createMatch}>
                 <label>
                   Competition
