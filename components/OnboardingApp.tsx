@@ -332,13 +332,17 @@ export default function OnboardingApp() {
 
             {message && <div className="onboardingMessage">{message}</div>}
 
-            <button className="primaryButton onboardingSubmit" onClick={finishSignup} disabled={busy}>
+            <button
+              className="primaryButton onboardingSubmit"
+              onClick={finishSignup}
+              disabled={busy || selectedTeams.length === 0}
+            >
               {busy ? "Saving…" : "Take me to Hockey Live"}
             </button>
 
-            <button className="skipTeams" onClick={finishSignup} disabled={busy}>
-              I&apos;ll choose teams later
-            </button>
+            {selectedTeams.length === 0 && (
+              <p className="teamRequired">Select at least one team to continue.</p>
+            )}
 
             <p className="privacyNote">
               We&apos;ve also sent a secure sign-in link to your email so you can access
