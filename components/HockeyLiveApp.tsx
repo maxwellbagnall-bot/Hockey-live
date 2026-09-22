@@ -701,6 +701,72 @@ export default function HockeyLiveApp() {
             ‹ Scores
           </button>
 
+          <div className="matchFocusHeader">
+            <div className="focusStatusRow">
+              <span className="liveTag">
+                <span className="pulseDot" />
+                {selected.status === "scheduled"
+                  ? "SCHEDULED"
+                  : selected.period === "FT"
+                    ? "FULL TIME"
+                    : "LIVE"}
+              </span>
+              <span className={`trust ${trustClass(selected.trust)}`}>
+                {selected.trust}
+              </span>
+            </div>
+
+            <div className="focusScoreRow">
+              <div className="focusTeam">
+                <b>{selected.home}</b>
+                <strong>{selected.homeScore}</strong>
+              </div>
+
+              <div className="focusClock">
+                <span>{selected.period}</span>
+                <strong>{formatClock(selectedClock)}</strong>
+              </div>
+
+              <div className="focusTeam away">
+                <b>{selected.away}</b>
+                <strong>{selected.awayScore}</strong>
+              </div>
+            </div>
+
+            <div className="focusControllerRow">
+              {iAmController ? (
+                <>
+                  <button
+                    onClick={() =>
+                      controlClock(selected.clockRunning ? "pause" : "start")
+                    }
+                  >
+                    {selected.clockRunning ? "Pause" : selected.status === "scheduled" ? "Start" : "Resume"}
+                  </button>
+                  <span>Controller: @{myUsername || selected.controllerUsername}</span>
+                  <button onClick={() => controlClock("next_period")}>
+                    {selected.period === "Q4" ? "FT" : "End Q"}
+                  </button>
+                  <button onClick={() => setControllerToolsOpen(true)}>•••</button>
+                </>
+              ) : selected.controllerProfileId && !selectedControllerStale ? (
+                <span className="focusControllerLabel">
+                  Controlled by @{selected.controllerUsername}
+                </span>
+              ) : selected.status !== "finished" ? (
+                <button className="focusClaimControl" onClick={claimControl}>
+                  {selectedControllerStale ? "Take over clock" : "Claim Match Controller"}
+                </button>
+              ) : (
+                <span className="focusControllerLabel">
+                  {selected.lastControllerUsername
+                    ? `Controlled by @${selected.lastControllerUsername}`
+                    : "Match finished"}
+                </span>
+              )}
+            </div>
+          </div>
+
           <div className="scoreboard">
             <div className="scoreTopline">
               <span className="liveTag">
@@ -959,7 +1025,17 @@ export default function HockeyLiveApp() {
                   <p className="eyebrow">COMMUNITY REPORTING</p>
                   <h3>What just happened?</h3>
                 </div>
-                <span className="demoPill">Waze-style reports</span>
+                <div className="sheetHeaderActions">
+                  <span className="demoPill">Waze-style reports</span>
+                  {matchFocusOpen && (
+                    <button
+                      className="sheetCloseButton"
+                      onClick={() => setContributeOpen(false)}
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p className="communityExplainer">
@@ -1027,6 +1103,100 @@ export default function HockeyLiveApp() {
                   onClick={() => submitReport("comment", null, comment)}
                 >
                   Post
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="matchFocusActions">
+            {selected.status !== "finished" ? (
+              <>
+                <div className="focusActionButtons">
+                  <button
+                    className="focusGoalButton"
+                    onClick={() => submitReport("goal", "home")}
+                  >
+                    <span>GOAL</span>
+                    <b>{selected.home}</b>
+                  </button>
+
+                  <button
+                    className="focusEventButton"
+                    onClick={() => setContributeOpen(true)}
+                  >
+                    + EVENT
+                  </button>
+
+                  <button
+                    className="focusGoalButton"
+                    onClick={() => submitReport("goal", "away")}
+                  >
+                    <span>GOAL</span>
+                    <b>{selected.away}</b>
+                  </button>
+                </div>
+
+                <div className="focusCommentBox">
+                  <input
+                    placeholder="Comment…"
+                    value={comment}
+                    maxLength={500}
+                    onChange={(event) => setComment(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" && comment.trim()) {
+                        void submitReport("comment", null, comment);
+                      }
+                    }}
+                  />
+                  <button
+                    disabled={!comment.trim()}
+                    onClick={() => submitReport("comment", null, comment)}
+                  >
+                    Send
+                  </button>
+                </div>
+              </>
+            ) : (
+              <button className="focusShareButton" onClick={downloadShareGraphic}>
+                Share final score
+              </button>
+            )}
+          </div>
+
+          {controllerToolsOpen && iAmController && (
+            <div className="focusSheetBackdrop" onClick={() => setControllerToolsOpen(false)}>
+              <div className="focusSheet" onClick={(event) => event.stopPropagation()}>
+                <div className="focusSheetHeader">
+                  <div>
+                    <p className="eyebrow">MATCH CONTROLLER</p>
+                    <h3>Clock tools</h3>
+                  </div>
+                  <button onClick={() => setControllerToolsOpen(false)}>×</button>
+                </div>
+
+                <div className="clockCorrection">
+                  <span>Correct clock</span>
+                  <button
+                    onClick={() =>
+                      controlClock("set", Math.max(0, selectedClock - 10))
+                    }
+                  >
+                    −10 sec
+                  </button>
+                  <button
+                    onClick={() =>
+                      controlClock("set", Math.min(10800, selectedClock + 10))
+                    }
+                  >
+                    +10 sec
+                  </button>
+                </div>
+
+                <button className="releaseControlButton" onClick={() => {
+                  setControllerToolsOpen(false);
+                  void releaseControl();
+                }}>
+                  Hand back Match Control
                 </button>
               </div>
             </div>
