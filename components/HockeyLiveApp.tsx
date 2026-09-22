@@ -386,6 +386,21 @@ export default function HockeyLiveApp() {
   }, []);
 
   useEffect(() => {
+    if (!interestedTeamIds.length || typeof window === "undefined") return;
+
+    const requestedMatch = new URLSearchParams(window.location.search).get("match");
+    if (requestedMatch) return;
+
+    const preferred = realMatches.find(
+      (match) =>
+        interestedTeamIds.includes(match.homeTeamId) ||
+        interestedTeamIds.includes(match.awayTeamId)
+    );
+
+    if (preferred) setSelectedId(preferred.id);
+  }, [interestedTeamIds, realMatches]);
+
+  useEffect(() => {
     if (!selectedId) return;
 
     void loadEvents(selectedId);
