@@ -1867,3 +1867,27 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     bottom:194px;
   }
 }
+
+
+/* Personalised home feed */
+.otherMatchesBlock {
+  margin-top:28px;
+}
+.otherMatchesBlock>h3 {
+  margin:0 0 12px;
+  color:#aebfcb;
+  font-size:15px;
+}
+.emptyFixtureState {
+  display:grid;
+  gap:5px;
+  padding:22px;
+  border:1px dashed var(--line);
+  border-radius:16px;
+  color:#c7d6e1;
+  background:rgba(255,255,255,.025);
+}
+.emptyFixtureState span {
+  color:var(--muted);
+  font-size:13px;
+}
