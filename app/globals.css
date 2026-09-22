@@ -216,3 +216,325 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .commentBox { grid-template-columns:1fr; }
   footer { align-items:flex-start; flex-direction:column; }
 }
+
+
+/* Onboarding */
+.onboardingShell {
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  background:
+    radial-gradient(circle at 80% 15%,rgba(24,226,139,.11),transparent 28%),
+    radial-gradient(circle at 15% 90%,rgba(103,183,255,.08),transparent 30%),
+    var(--bg);
+}
+.onboardingHeader {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:20px clamp(20px,5vw,72px);
+}
+.welcomeBack {
+  border:0;
+  background:transparent;
+  color:#c6d3de;
+  font-weight:800;
+  cursor:pointer;
+}
+.onboardingWelcome {
+  width:min(1180px,100%);
+  margin:auto;
+  padding:54px clamp(20px,5vw,72px) 80px;
+  display:grid;
+  grid-template-columns:1.05fr .75fr;
+  gap:70px;
+  align-items:center;
+}
+.onboardingPitch h1 { font-size:clamp(58px,8vw,102px); }
+.onboardingLead {
+  max-width:650px;
+  color:#b8c8d4;
+  font-size:clamp(20px,2.2vw,26px);
+  line-height:1.55;
+  margin:26px 0 0;
+}
+.onboardingActions {
+  display:flex;
+  gap:12px;
+  margin-top:32px;
+}
+.onboardingPrimary,.onboardingSecondary {
+  min-height:52px;
+  padding-inline:24px;
+  font-size:16px;
+}
+.onboardingSmall {
+  color:var(--muted);
+  font-size:13px;
+  margin-top:16px;
+}
+.welcomeScoreCard {
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:28px;
+  padding:26px;
+  background:linear-gradient(180deg,#10283d,#081725);
+  box-shadow:0 30px 90px rgba(0,0,0,.34);
+}
+.welcomeScoreTop {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  color:#9cb0c0;
+  font-size:12px;
+  letter-spacing:.05em;
+  padding-bottom:20px;
+  border-bottom:1px solid var(--line);
+}
+.welcomeScoreTop>span {
+  display:inline-flex;
+  align-items:center;
+  gap:9px;
+  color:var(--green);
+  font-weight:900;
+}
+.welcomeTeamRow {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  padding:19px 0;
+  font-size:22px;
+  font-weight:800;
+}
+.welcomeTeamRow strong {
+  font-size:48px;
+  letter-spacing:-.04em;
+}
+.welcomeTimeline {
+  display:grid;
+  grid-template-columns:46px 1fr;
+  align-items:center;
+  gap:12px;
+  padding:14px;
+  margin-top:10px;
+  background:rgba(255,255,255,.035);
+  border:1px solid var(--line);
+  border-radius:14px;
+}
+.welcomeTimeline>span {
+  display:grid;
+  place-items:center;
+  width:42px;
+  height:42px;
+  border-radius:11px;
+  background:rgba(24,226,139,.13);
+  color:var(--green);
+  font-size:10px;
+  font-weight:950;
+}
+.welcomeTimeline div { display:grid; gap:3px; }
+.welcomeTimeline small { color:var(--muted); }
+
+.onboardingStage {
+  flex:1;
+  display:grid;
+  place-items:center;
+  padding:30px 20px 80px;
+}
+.onboardingCard {
+  width:min(560px,100%);
+  padding:clamp(24px,5vw,40px);
+  border:1px solid var(--line);
+  border-radius:26px;
+  background:linear-gradient(180deg,rgba(16,38,58,.97),rgba(8,24,38,.97));
+  box-shadow:0 28px 90px rgba(0,0,0,.26);
+}
+.teamOnboardingCard { width:min(680px,100%); }
+.stepCount {
+  float:right;
+  color:#90a5b7;
+  border:1px solid var(--line);
+  border-radius:999px;
+  padding:6px 10px;
+  font-size:11px;
+  font-weight:900;
+}
+.onboardingCard h2 {
+  font-size:clamp(34px,6vw,54px);
+  line-height:1;
+  letter-spacing:-.045em;
+  margin:0;
+}
+.onboardingCardCopy {
+  color:#aebfcb;
+  line-height:1.55;
+  margin:16px 0 28px;
+}
+.onboardingForm { display:grid; gap:16px; }
+.onboardingForm label {
+  display:grid;
+  gap:8px;
+  color:#dbe6ee;
+  font-size:13px;
+  font-weight:800;
+}
+.onboardingForm input,.teamSearch {
+  width:100%;
+  border:1px solid rgba(255,255,255,.12);
+  border-radius:12px;
+  background:#071522;
+  color:white;
+  padding:14px 15px;
+  outline:none;
+}
+.onboardingForm input:focus,.teamSearch:focus {
+  border-color:rgba(24,226,139,.65);
+  box-shadow:0 0 0 3px rgba(24,226,139,.08);
+}
+.onboardingSubmit {
+  width:100%;
+  min-height:52px;
+  margin-top:6px;
+  font-size:16px;
+}
+.onboardingSubmit:disabled {
+  cursor:not-allowed;
+  opacity:.45;
+}
+.onboardingMessage {
+  border:1px solid rgba(255,107,107,.28);
+  background:rgba(255,107,107,.08);
+  color:#ffc0c0;
+  border-radius:11px;
+  padding:11px 12px;
+  font-size:13px;
+}
+.privacyNote {
+  color:#7f94a6;
+  font-size:11px;
+  line-height:1.55;
+  margin:18px 0 0;
+}
+.teamPicker { position:relative; }
+.teamPickerButton {
+  width:100%;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:12px;
+  background:#071522;
+  color:white;
+  padding:15px;
+  cursor:pointer;
+  font-weight:800;
+}
+.teamPickerMenu {
+  position:absolute;
+  z-index:40;
+  top:calc(100% + 8px);
+  left:0;
+  right:0;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.13);
+  border-radius:15px;
+  background:#091827;
+  box-shadow:0 22px 70px rgba(0,0,0,.42);
+}
+.teamSearch {
+  margin:12px;
+  width:calc(100% - 24px);
+}
+.teamOptions {
+  max-height:300px;
+  overflow:auto;
+  padding:0 8px 8px;
+}
+.teamOption {
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:11px 10px;
+  border-radius:10px;
+  cursor:pointer;
+}
+.teamOption:hover { background:rgba(255,255,255,.04); }
+.teamOption input {
+  width:18px;
+  height:18px;
+  accent-color:var(--green);
+}
+.teamOption>span { display:grid; gap:2px; }
+.teamOption small { color:var(--muted); }
+.noTeams {
+  color:var(--muted);
+  text-align:center;
+  padding:24px 12px;
+}
+.selectedTeamChips {
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:14px;
+}
+.selectedTeamChips button {
+  border:1px solid rgba(24,226,139,.25);
+  border-radius:999px;
+  background:rgba(24,226,139,.09);
+  color:#dffbed;
+  padding:8px 11px;
+  cursor:pointer;
+  font-size:12px;
+  font-weight:800;
+}
+.selectedTeamChips span { color:var(--green); margin-left:4px; }
+.teamRequired {
+  color:#93a8b8;
+  text-align:center;
+  font-size:12px;
+  margin:10px 0 0;
+}
+.checkEmail { text-align:center; }
+.checkEmailIcon {
+  display:grid;
+  place-items:center;
+  width:58px;
+  height:58px;
+  margin:0 auto 22px;
+  border-radius:18px;
+  background:rgba(24,226,139,.14);
+  color:var(--green);
+  font-size:28px;
+  font-weight:950;
+}
+.accessCheck {
+  min-height:100vh;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:16px;
+}
+.accessCheck p { color:var(--muted); }
+
+@media (max-width:800px) {
+  .onboardingWelcome {
+    grid-template-columns:1fr;
+    gap:38px;
+    padding-top:38px;
+  }
+  .welcomeScoreCard { max-width:560px; }
+}
+@media (max-width:560px) {
+  .onboardingHeader { padding:16px; }
+  .onboardingWelcome {
+    padding:34px 20px 60px;
+  }
+  .onboardingPitch h1 { font-size:57px; }
+  .onboardingActions { display:grid; grid-template-columns:1fr 1fr; }
+  .onboardingPrimary,.onboardingSecondary { padding-inline:12px; }
+  .welcomeScoreCard { padding:18px; border-radius:22px; }
+  .welcomeTeamRow { font-size:17px; }
+  .welcomeTeamRow strong { font-size:40px; }
+  .onboardingStage { padding-inline:14px; }
+  .onboardingCard { padding:24px 19px; border-radius:22px; }
+  .teamPickerMenu { position:relative; top:8px; margin-bottom:12px; }
+}
