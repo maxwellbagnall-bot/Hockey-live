@@ -25,8 +25,39 @@ export default function OnboardingApp() {
   const [accessToken, setAccessToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [restoringSession, setRestoringSession] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
+    async function restoreExistingUser() {
+      const onboarded =
+        localStorage.getItem("hockey_live_onboarded") === "1";
+
+      if (onboarded) {
+        window.location.replace("/live");
+        return;
+      }
+
+      const { data } = await supabase.auth.getSession();
+      if (data.session) {
+        window.location.replace("/live");
+        return;
+      }
+
+      if (mounted) setRestoringSession(false);
+    }
+
+    void restoreExistingUser();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (restoringSession) return;
+
     supabase
       .from("teams")
       .select("id,name,age_group,gender,club:clubs(name)")
@@ -35,7 +66,7 @@ export default function OnboardingApp() {
       .then(({ data, error }) => {
         if (!error) setTeams((data ?? []) as Team[]);
       });
-  }, []);
+  }, [restoringSession]);
 
   const filteredTeams = useMemo(() => {
     const needle = search.trim().toLowerCase();
@@ -143,6 +174,18 @@ export default function OnboardingApp() {
     }
 
     setStage("check-email");
+  }
+
+  if (restoringSession) {
+    return (
+      <main className="accessCheck">
+        <div className="brand">
+          <span className="brandMark">HL</span>
+          <span>Hockey Live</span>
+        </div>
+        <p>Opening Hockey Live…</p>
+      </main>
+    );
   }
 
   return (
