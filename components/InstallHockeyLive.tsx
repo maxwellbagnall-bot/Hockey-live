@@ -104,8 +104,8 @@ export default function InstallHockeyLive() {
           <span>Open it from your Home Screen just like an app.</span>
         ) : (
           <span>
-            In Safari tap <strong>Share</strong>, then{" "}
-            <strong>Add to Home Screen</strong>.
+            In Safari tap <strong>Share</strong> → <strong>Add to Home Screen</strong>,
+            turn on <strong>Open as Web App</strong>, then tap <strong>Add</strong>.
           </span>
         )}
       </div>
