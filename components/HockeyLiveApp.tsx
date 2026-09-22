@@ -115,6 +115,7 @@ export default function HockeyLiveApp() {
   const [comment, setComment] = useState("");
   const [contributeOpen, setContributeOpen] = useState(false);
   const [matchFocusOpen, setMatchFocusOpen] = useState(false);
+  const [controllerControlsOpen, setControllerControlsOpen] = useState(false);
   const [minuteDraft, setMinuteDraft] = useState(0);
   const [minuteEdited, setMinuteEdited] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
@@ -694,6 +695,7 @@ export default function HockeyLiveApp() {
             onClick={() => {
               setMatchFocusOpen(false);
               setContributeOpen(false);
+              setControllerControlsOpen(false);
             }}
           >
             ‹ Scores
@@ -758,9 +760,15 @@ export default function HockeyLiveApp() {
                   </b>
                 </div>
               ) : iAmController ? (
-                <div>
+                <div className="controllerIdentity">
                   <span className="controllerBadge active">YOU’RE CONTROLLING</span>
                   <b>@{myUsername || selected.controllerUsername}</b>
+                  <button
+                    className="controllerMiniButton"
+                    onClick={() => setControllerControlsOpen(true)}
+                  >
+                    Clock controls
+                  </button>
                 </div>
               ) : selected.controllerProfileId && !selectedControllerStale ? (
                 <div>
@@ -791,8 +799,18 @@ export default function HockeyLiveApp() {
                 )}
             </div>
 
-            {iAmController && selected.status !== "finished" && (
-              <div className="controllerPanel">
+            {iAmController &&
+              selected.status !== "finished" &&
+              (!matchFocusOpen || controllerControlsOpen) && (
+              <div className={`controllerPanel ${matchFocusOpen ? "controllerOverlay" : ""}`}>
+                {matchFocusOpen && (
+                  <button
+                    className="overlayClose"
+                    onClick={() => setControllerControlsOpen(false)}
+                  >
+                    Done
+                  </button>
+                )}
                 <div className="controllerPanelHeader">
                   <div>
                     <p className="eyebrow">MATCH CONTROLLER</p>
@@ -927,7 +945,15 @@ export default function HockeyLiveApp() {
           </div>
 
           {contributeOpen && (
-            <div className="scorerPanel communityPanel">
+            <div className={`scorerPanel communityPanel ${matchFocusOpen ? "eventOverlay" : ""}`}>
+              {matchFocusOpen && (
+                <button
+                  className="overlayClose"
+                  onClick={() => setContributeOpen(false)}
+                >
+                  Done
+                </button>
+              )}
               <div className="scorerHeader">
                 <div>
                   <p className="eyebrow">COMMUNITY REPORTING</p>
