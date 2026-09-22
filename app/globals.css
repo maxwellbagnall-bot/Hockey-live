@@ -2038,3 +2038,85 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     flex-direction:column;
   }
 }
+
+
+/* Existing fixtures inside Season Setup */
+.existingSeasonBlock {
+  margin:20px 0 18px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:rgba(255,255,255,.025);
+}
+.existingSeasonHeader {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.existingSeasonHeader h3,
+.seasonAddMoreHeading h3 {
+  margin:2px 0 0;
+}
+.existingSeasonEmpty {
+  margin:0;
+  color:var(--muted);
+  font-size:13px;
+}
+.existingFixtureList {
+  display:grid;
+  gap:7px;
+}
+.existingFixtureRow {
+  display:grid;
+  grid-template-columns:56px 30px minmax(0,1fr) 60px 74px;
+  gap:8px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;
+  background:#081725;
+  color:white;
+  text-decoration:none;
+}
+.existingFixtureRow b {
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:13px;
+}
+.existingFixtureDate,
+.existingFixtureTime,
+.existingFixtureStatus,
+.existingFixtureSide {
+  color:#9fb1c0;
+  font-size:11px;
+  font-weight:800;
+}
+.existingFixtureSide {
+  display:grid;
+  place-items:center;
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  background:rgba(24,226,139,.08);
+  color:var(--green);
+}
+.existingFixtureStatus {
+  text-transform:capitalize;
+  text-align:right;
+}
+.seasonAddMoreHeading {
+  margin:18px 0 10px;
+}
+
+@media (max-width:620px) {
+  .existingFixtureRow {
+    grid-template-columns:50px 28px minmax(0,1fr) 54px;
+  }
+  .existingFixtureStatus {
+    display:none;
+  }
+}
