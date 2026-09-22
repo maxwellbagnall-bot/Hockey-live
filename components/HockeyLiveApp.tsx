@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "../lib/supabase";
 
 type Side = "home" | "away" | null;
 type EventKind =
@@ -13,7 +14,7 @@ type EventKind =
   | "comment";
 
 type MatchEvent = {
-  id: number;
+  id: string;
   kind: EventKind;
   side: Side;
   minute: number;
@@ -21,7 +22,9 @@ type MatchEvent = {
 };
 
 type Match = {
-  id: number;
+  id: string;
+  homeTeamId: string;
+  awayTeamId: string;
   home: string;
   away: string;
   homeScore: number;
@@ -29,6 +32,8 @@ type Match = {
   period: string;
   minute: number;
   trust: "Community" | "Confirmed" | "Official";
+  status: "scheduled" | "live" | "finished";
+  competition: string;
 };
 
 const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
@@ -41,49 +46,14 @@ const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
   comment: { label: "Update", icon: "LIVE" }
 };
 
-const demoMatches: Match[] = [
-  {
-    id: 1,
-    home: "Beeston 2s",
-    away: "Nottingham 2s",
-    homeScore: 2,
-    awayScore: 1,
-    period: "Q3",
-    minute: 43,
-    trust: "Confirmed"
-  },
-  {
-    id: 2,
-    home: "Leeds 1s",
-    away: "Wakefield 1s",
-    homeScore: 1,
-    awayScore: 1,
-    period: "Q4",
-    minute: 58,
-    trust: "Community"
-  },
-  {
-    id: 3,
-    home: "Repton U16",
-    away: "Belper U16",
-    homeScore: 3,
-    awayScore: 2,
-    period: "FT",
-    minute: 70,
-    trust: "Official"
-  }
-];
-
-const initialEvents: MatchEvent[] = [
-  { id: 1, kind: "goal", side: "home", minute: 39, text: "Beeston 2s score to make it 2–1." },
-  { id: 2, kind: "short_corner", side: "away", minute: 36, text: "Short corner to Nottingham 2s." },
-  { id: 3, kind: "period_end", side: null, minute: 35, text: "Half-time. The score is 1–1." },
-  { id: 4, kind: "goal", side: "away", minute: 23, text: "Nottingham 2s equalise." },
-  { id: 5, kind: "goal", side: "home", minute: 12, text: "Beeston 2s open the scoring." }
-];
-
 function trustClass(level: string) {
   return level.toLowerCase();
+}
+
+function prettyTrust(value: string): Match["trust"] {
+  if (value === "official") return "Official";
+  if (value === "confirmed") return "Confirmed";
+  return "Community";
 }
 
 function initials(name: string) {
@@ -96,17 +66,20 @@ function initials(name: string) {
 }
 
 export default function HockeyLiveApp() {
-  const [selectedId, setSelectedId] = useState(1);
-  const [homeScore, setHomeScore] = useState(2);
-  const [awayScore, setAwayScore] = useState(1);
-  const [minute, setMinute] = useState(43);
-  const [period, setPeriod] = useState("Q3");
-  const [events, setEvents] = useState<MatchEvent[]>(initialEvents);
+  const [matches, setMatches] = useState<Match[]>([]);
+  const [selectedId, setSelectedId] = useState("");
+  const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
   const [scorerMode, setScorerMode] = useState(false);
+  const [scorerPin, setScorerPin] = useState("");
+  const [minuteDraft, setMinuteDraft] = useState(0);
+  const [periodDraft, setPeriodDraft] = useState("Q1");
   const [toast, setToast] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [backendError, setBackendError] = useState("");
 
-  const selected = demoMatches.find((match) => match.id === selectedId) ?? demoMatches[0];
+  const selected = matches.find((match) => match.id === selectedId) ?? matches[0];
+
   const feed = useMemo(
     () => events.map((event) => ({ ...event, ...EVENT_META[event.kind] })),
     [events]
@@ -114,70 +87,209 @@ export default function HockeyLiveApp() {
 
   function announce(message: string) {
     setToast(message);
-    window.setTimeout(() => setToast(""), 2200);
+    window.setTimeout(() => setToast(""), 2400);
   }
 
-  function selectMatch(match: Match) {
-    setSelectedId(match.id);
-    setHomeScore(match.homeScore);
-    setAwayScore(match.awayScore);
-    setPeriod(match.period);
-    setMinute(match.minute);
-    if (match.id !== 1) {
-      setEvents([
-        {
-          id: Date.now(),
-          kind: "comment",
-          side: null,
-          minute: match.minute,
-          text: "Demo timeline ready for live match updates."
-        }
-      ]);
-    } else {
-      setEvents(initialEvents);
+  async function loadMatches() {
+    const { data, error } = await supabase
+      .from("matches")
+      .select(
+        `id, home_score, away_score, period, minute, status, verification, competition,
+         home_team:teams!matches_home_team_id_fkey(id,name),
+         away_team:teams!matches_away_team_id_fkey(id,name)`
+      )
+      .order("created_at", { ascending: true });
+
+    if (error) {
+      setBackendError(error.message);
+      setLoading(false);
+      return;
     }
+
+    const next: Match[] = (data ?? []).map((row: any) => ({
+      id: row.id,
+      homeTeamId: row.home_team?.id ?? "",
+      awayTeamId: row.away_team?.id ?? "",
+      home: row.home_team?.name ?? "Home",
+      away: row.away_team?.name ?? "Away",
+      homeScore: row.home_score ?? 0,
+      awayScore: row.away_score ?? 0,
+      period: row.period ?? "Q1",
+      minute: row.minute ?? 0,
+      trust: prettyTrust(row.verification),
+      status: row.status,
+      competition: row.competition ?? "Hockey match"
+    }));
+
+    setMatches(next);
+    setSelectedId((current) => current || next[0]?.id || "");
+    setBackendError("");
+    setLoading(false);
   }
 
-  function addEvent(kind: EventKind, side: Side, text?: string) {
-    const meta = EVENT_META[kind];
-    const team = side === "home" ? selected.home : side === "away" ? selected.away : "Match";
-    let nextText = text || `${meta.label}: ${team}`;
+  async function loadEvents(matchId: string) {
+    if (!matchId) return;
+
+    const { data, error } = await supabase
+      .from("match_events")
+      .select("id,event_type,team_id,minute,note,created_at")
+      .eq("match_id", matchId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setBackendError(error.message);
+      return;
+    }
+
+    const match = matches.find((item) => item.id === matchId);
+    const next: MatchEvent[] = (data ?? []).map((row: any) => ({
+      id: row.id,
+      kind: row.event_type as EventKind,
+      side:
+        row.team_id && row.team_id === match?.homeTeamId
+          ? "home"
+          : row.team_id && row.team_id === match?.awayTeamId
+            ? "away"
+            : null,
+      minute: row.minute ?? match?.minute ?? 0,
+      text: row.note ?? EVENT_META[row.event_type as EventKind]?.label ?? "Match update"
+    }));
+
+    setEvents(next);
+  }
+
+  useEffect(() => {
+    loadMatches();
+
+    const channel = supabase
+      .channel("hockey-live-matches")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "matches" },
+        () => loadMatches()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!selectedId) return;
+
+    loadEvents(selectedId);
+
+    const channel = supabase
+      .channel(`hockey-live-events-${selectedId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "match_events",
+          filter: `match_id=eq.${selectedId}`
+        },
+        () => loadEvents(selectedId)
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedId, matches.length]);
+
+  useEffect(() => {
+    if (!selected) return;
+    setMinuteDraft(selected.minute);
+    setPeriodDraft(selected.period);
+  }, [selected?.id, selected?.minute, selected?.period]);
+
+  async function saveClock(period = periodDraft, minute = minuteDraft) {
+    if (!selected) return false;
+    if (!scorerPin.trim()) {
+      announce("Enter the scorer PIN first");
+      return false;
+    }
+
+    const { error } = await supabase.rpc("update_match_clock", {
+      p_match_id: selected.id,
+      p_pin: scorerPin.trim(),
+      p_period: period,
+      p_minute: minute
+    });
+
+    if (error) {
+      announce(error.message.includes("Invalid scorer PIN") ? "Incorrect scorer PIN" : error.message);
+      return false;
+    }
+
+    await loadMatches();
+    announce("Match clock saved");
+    return true;
+  }
+
+  async function addEvent(kind: EventKind, side: Side, text?: string) {
+    if (!selected) return;
+    if (!scorerPin.trim()) {
+      announce("Enter the scorer PIN first");
+      return;
+    }
+
+    const teamId =
+      side === "home"
+        ? selected.homeTeamId
+        : side === "away"
+          ? selected.awayTeamId
+          : null;
+
+    let nextText = text?.trim() || `${EVENT_META[kind].label}: ${side === "home" ? selected.home : side === "away" ? selected.away : "Match"}`;
 
     if (kind === "goal") {
-      if (side === "home") {
-        const score = homeScore + 1;
-        setHomeScore(score);
-        nextText = `${selected.home} score. ${score}–${awayScore}.`;
-      } else if (side === "away") {
-        const score = awayScore + 1;
-        setAwayScore(score);
-        nextText = `${selected.away} score. ${homeScore}–${score}.`;
-      }
+      const predictedHome = selected.homeScore + (side === "home" ? 1 : 0);
+      const predictedAway = selected.awayScore + (side === "away" ? 1 : 0);
+      nextText = `${side === "home" ? selected.home : selected.away} score. ${predictedHome}–${predictedAway}.`;
     }
 
-    setEvents((current) => [
-      { id: Date.now(), kind, side, minute, text: nextText },
-      ...current
-    ]);
-    announce(`${meta.label} added`);
-  }
+    const { error } = await supabase.rpc("record_match_event", {
+      p_match_id: selected.id,
+      p_pin: scorerPin.trim(),
+      p_event_type: kind,
+      p_team_id: teamId,
+      p_minute: minuteDraft,
+      p_note: nextText
+    });
 
-  function addComment() {
-    const value = comment.trim();
-    if (!value) return;
-    addEvent("comment", null, value);
+    if (error) {
+      announce(error.message.includes("Invalid scorer PIN") ? "Incorrect scorer PIN" : error.message);
+      return;
+    }
+
     setComment("");
+    await Promise.all([loadMatches(), loadEvents(selected.id)]);
+    announce(`${EVENT_META[kind].label} added live`);
   }
 
-  function advancePeriod() {
+  async function advancePeriod() {
+    if (!selected) return;
     const order = ["Q1", "Q2", "Q3", "Q4", "FT"];
-    const index = Math.max(0, order.indexOf(period));
+    const index = Math.max(0, order.indexOf(periodDraft));
     const next = order[Math.min(index + 1, order.length - 1)];
-    setPeriod(next);
-    addEvent("period_end", null, next === "FT" ? "Full time." : `${period} ended. ${next} begins.`);
+
+    const saved = await saveClock(next, minuteDraft);
+    if (!saved) return;
+
+    await addEvent(
+      "period_end",
+      null,
+      next === "FT" ? "Full time." : `${periodDraft} ended. ${next} begins.`
+    );
+    setPeriodDraft(next);
   }
 
   function downloadShareGraphic() {
+    if (!selected) return;
+
     const canvas = document.createElement("canvas");
     canvas.width = 1080;
     canvas.height = 1080;
@@ -196,7 +308,7 @@ export default function HockeyLiveApp() {
 
     ctx.fillStyle = "#94a9bc";
     ctx.font = "600 32px Arial";
-    ctx.fillText(period === "FT" ? "FULL TIME" : "LIVE SCORE", 80, 180);
+    ctx.fillText(selected.period === "FT" ? "FULL TIME" : "LIVE SCORE", 80, 180);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "700 58px Arial";
@@ -205,13 +317,13 @@ export default function HockeyLiveApp() {
 
     ctx.textAlign = "right";
     ctx.font = "800 150px Arial";
-    ctx.fillText(String(homeScore), 990, 380);
-    ctx.fillText(String(awayScore), 990, 640);
+    ctx.fillText(String(selected.homeScore), 990, 380);
+    ctx.fillText(String(selected.awayScore), 990, 640);
 
     ctx.textAlign = "left";
     ctx.fillStyle = "#18e28b";
     ctx.font = "700 32px Arial";
-    ctx.fillText(`${period} • ${minute}'`, 80, 760);
+    ctx.fillText(`${selected.period} • ${selected.minute}'`, 80, 760);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "600 28px Arial";
@@ -226,6 +338,10 @@ export default function HockeyLiveApp() {
     link.href = canvas.toDataURL("image/png");
     link.click();
     announce("Share graphic created");
+  }
+
+  if (loading) {
+    return <main><section className="hero"><div><p className="eyebrow">HOCKEY LIVE</p><h1>Loading live scores…</h1></div></section></main>;
   }
 
   return (
@@ -256,136 +372,147 @@ export default function HockeyLiveApp() {
             <a className="primaryButton" href="#live">See live scores</a>
             <button className="secondaryButton" onClick={() => setScorerMode(true)}>Start scoring</button>
           </div>
+          {backendError && <p className="heroCopy">Backend warning: {backendError}</p>}
         </div>
 
         <div className="heroPanel">
           <span className="pulseDot" />
           <strong>LIVE NOW</strong>
-          <p>{demoMatches.filter((match) => match.period !== "FT").length} demo matches reporting</p>
-          <div className="miniScore">
-            <span>{selected.home}</span><b>{homeScore}</b>
-            <span>{selected.away}</span><b>{awayScore}</b>
-          </div>
+          <p>{matches.filter((match) => match.status === "live").length} matches reporting from Supabase</p>
+          {selected && (
+            <div className="miniScore">
+              <span>{selected.home}</span><b>{selected.homeScore}</b>
+              <span>{selected.away}</span><b>{selected.awayScore}</b>
+            </div>
+          )}
         </div>
       </section>
 
       <section className="section" id="live">
         <div className="sectionHeading">
           <div><p className="eyebrow">LIVE FEED</p><h2>Matches happening now</h2></div>
-          <span className="demoPill">Demo data</span>
+          <span className="demoPill">Realtime backend</span>
         </div>
 
         <div className="matchGrid">
-          {demoMatches.map((match) => {
-            const isSelected = match.id === selectedId;
-            const h = isSelected ? homeScore : match.homeScore;
-            const a = isSelected ? awayScore : match.awayScore;
-            const p = isSelected ? period : match.period;
-            const m = isSelected ? minute : match.minute;
-
-            return (
-              <button
-                key={match.id}
-                className={`matchCard ${isSelected ? "selected" : ""}`}
-                onClick={() => selectMatch(match)}
-              >
-                <div className="matchMeta">
-                  <span>{p === "FT" ? "Finished" : `${p} • ${m}'`}</span>
-                  <span className={`trust ${trustClass(match.trust)}`}>{match.trust}</span>
-                </div>
-                <div className="teamRow"><span>{match.home}</span><b>{h}</b></div>
-                <div className="teamRow"><span>{match.away}</span><b>{a}</b></div>
-                <div className="cardFooter">Open match centre <span>→</span></div>
-              </button>
-            );
-          })}
+          {matches.map((match) => (
+            <button
+              key={match.id}
+              className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+              onClick={() => setSelectedId(match.id)}
+            >
+              <div className="matchMeta">
+                <span>{match.period === "FT" ? "Finished" : `${match.period} • ${match.minute}'`}</span>
+                <span className={`trust ${trustClass(match.trust)}`}>{match.trust}</span>
+              </div>
+              <div className="teamRow"><span>{match.home}</span><b>{match.homeScore}</b></div>
+              <div className="teamRow"><span>{match.away}</span><b>{match.awayScore}</b></div>
+              <div className="cardFooter">Open match centre <span>→</span></div>
+            </button>
+          ))}
         </div>
       </section>
 
-      <section className="section matchCentre" id="match">
-        <div className="scoreboard">
-          <div className="scoreTopline">
-            <span className="liveTag"><span className="pulseDot" /> {period === "FT" ? "FULL TIME" : "LIVE"}</span>
-            <span className={`trust ${trustClass(selected.trust)}`}>{selected.trust}</span>
-          </div>
-          <p className="competition">Saturday League • Demo match centre</p>
-          <div className="bigScore">
-            <div><span className="teamBadge">{initials(selected.home)}</span><h3>{selected.home}</h3></div>
-            <strong>{homeScore}<i>–</i>{awayScore}</strong>
-            <div><span className="teamBadge alt">{initials(selected.away)}</span><h3>{selected.away}</h3></div>
-          </div>
-          <div className="clock"><b>{period}</b><span>{minute}'</span></div>
-          <div className="scoreActions">
-            <button className="primaryButton" onClick={downloadShareGraphic}>Create share graphic</button>
-            <button className="secondaryButton" onClick={() => setScorerMode((value) => !value)}>
-              {scorerMode ? "Close scorer" : "Update match"}
-            </button>
-          </div>
-        </div>
-
-        {scorerMode && (
-          <div className="scorerPanel">
-            <div className="scorerHeader">
-              <div><p className="eyebrow">SCORER MODE</p><h3>Fast match updates</h3></div>
-              <span className="demoPill">Local demo</span>
+      {selected && (
+        <section className="section matchCentre" id="match">
+          <div className="scoreboard">
+            <div className="scoreTopline">
+              <span className="liveTag"><span className="pulseDot" /> {selected.period === "FT" ? "FULL TIME" : "LIVE"}</span>
+              <span className={`trust ${trustClass(selected.trust)}`}>{selected.trust}</span>
             </div>
-
-            <div className="timeControls">
-              <label>
-                Minute
-                <input type="number" min="0" max="90" value={minute} onChange={(event) => setMinute(Number(event.target.value))} />
-              </label>
-              <label>
-                Period
-                <select value={period} onChange={(event) => setPeriod(event.target.value)}>
-                  <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option><option>FT</option>
-                </select>
-              </label>
+            <p className="competition">{selected.competition}</p>
+            <div className="bigScore">
+              <div><span className="teamBadge">{initials(selected.home)}</span><h3>{selected.home}</h3></div>
+              <strong>{selected.homeScore}<i>–</i>{selected.awayScore}</strong>
+              <div><span className="teamBadge alt">{initials(selected.away)}</span><h3>{selected.away}</h3></div>
             </div>
+            <div className="clock"><b>{selected.period}</b><span>{selected.minute}'</span></div>
+            <div className="scoreActions">
+              <button className="primaryButton" onClick={downloadShareGraphic}>Create share graphic</button>
+              <button className="secondaryButton" onClick={() => setScorerMode((value) => !value)}>
+                {scorerMode ? "Close scorer" : "Update match"}
+              </button>
+            </div>
+          </div>
 
-            <div className="scorerTeams">
-              {(["home", "away"] as const).map((side) => (
-                <div key={side}>
-                  <b>{side === "home" ? selected.home : selected.away}</b>
-                  <button onClick={() => addEvent("goal", side)}>+ Goal</button>
-                  <button onClick={() => addEvent("short_corner", side)}>+ Short corner</button>
-                  <button onClick={() => addEvent("green_card", side)}>+ Green card</button>
-                  <button onClick={() => addEvent("yellow_card", side)}>+ Yellow card</button>
-                  <button onClick={() => addEvent("red_card", side)}>+ Red card</button>
-                </div>
+          {scorerMode && (
+            <div className="scorerPanel">
+              <div className="scorerHeader">
+                <div><p className="eyebrow">SCORER MODE</p><h3>Fast live updates</h3></div>
+                <span className="demoPill">Writes to Supabase</span>
+              </div>
+
+              <div className="commentBox">
+                <input
+                  type="password"
+                  inputMode="numeric"
+                  placeholder="Scorer PIN"
+                  value={scorerPin}
+                  onChange={(event) => setScorerPin(event.target.value)}
+                />
+                <button onClick={() => announce(scorerPin ? "PIN entered" : "Enter your scorer PIN")}>Unlock</button>
+              </div>
+
+              <div className="timeControls">
+                <label>
+                  Minute
+                  <input type="number" min="0" max="90" value={minuteDraft} onChange={(event) => setMinuteDraft(Number(event.target.value))} />
+                </label>
+                <label>
+                  Period
+                  <select value={periodDraft} onChange={(event) => setPeriodDraft(event.target.value)}>
+                    <option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option><option>FT</option>
+                  </select>
+                </label>
+              </div>
+
+              <button className="periodButton" onClick={() => saveClock()}>Save clock</button>
+
+              <div className="scorerTeams">
+                {(["home", "away"] as const).map((side) => (
+                  <div key={side}>
+                    <b>{side === "home" ? selected.home : selected.away}</b>
+                    <button onClick={() => addEvent("goal", side)}>+ Goal</button>
+                    <button onClick={() => addEvent("short_corner", side)}>+ Short corner</button>
+                    <button onClick={() => addEvent("green_card", side)}>+ Green card</button>
+                    <button onClick={() => addEvent("yellow_card", side)}>+ Yellow card</button>
+                    <button onClick={() => addEvent("red_card", side)}>+ Red card</button>
+                  </div>
+                ))}
+              </div>
+
+              <div className="commentBox">
+                <input
+                  placeholder="Add a free-text update…"
+                  value={comment}
+                  onChange={(event) => setComment(event.target.value)}
+                  onKeyDown={(event) => event.key === "Enter" && addEvent("comment", null, comment)}
+                />
+                <button onClick={() => addEvent("comment", null, comment)}>Post</button>
+              </div>
+              <button className="periodButton" onClick={advancePeriod}>End period / advance</button>
+            </div>
+          )}
+
+          <div className="timelinePanel">
+            <div className="sectionHeading compact">
+              <div><p className="eyebrow">MATCH TIMELINE</p><h3>Latest updates</h3></div>
+            </div>
+            <div className="timeline">
+              {feed.length === 0 && <p className="heroCopy">No timeline events yet.</p>}
+              {feed.map((event) => (
+                <article key={event.id} className="eventRow">
+                  <span className={`eventIcon ${event.kind}`}>{event.icon}</span>
+                  <div>
+                    <div className="eventMeta"><b>{event.label}</b><span>{event.minute}'</span></div>
+                    <p>{event.text}</p>
+                  </div>
+                </article>
               ))}
             </div>
-
-            <div className="commentBox">
-              <input
-                placeholder="Add a free-text update…"
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                onKeyDown={(event) => event.key === "Enter" && addComment()}
-              />
-              <button onClick={addComment}>Post</button>
-            </div>
-            <button className="periodButton" onClick={advancePeriod}>End period / advance</button>
           </div>
-        )}
-
-        <div className="timelinePanel">
-          <div className="sectionHeading compact">
-            <div><p className="eyebrow">MATCH TIMELINE</p><h3>Latest updates</h3></div>
-          </div>
-          <div className="timeline">
-            {feed.map((event) => (
-              <article key={event.id} className="eventRow">
-                <span className={`eventIcon ${event.kind}`}>{event.icon}</span>
-                <div>
-                  <div className="eventMeta"><b>{event.label}</b><span>{event.minute}'</span></div>
-                  <p>{event.text}</p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <section className="section trustSection" id="how">
         <div className="sectionHeading">
