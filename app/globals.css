@@ -2120,3 +2120,146 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     display:none;
   }
 }
+
+
+/* Corrections and fixture management */
+.disallowedEvent {
+  opacity:.78;
+}
+.disallowedEvent .eventIcon {
+  background:rgba(255,107,107,.12);
+  color:#ff7b7b;
+  border-color:rgba(255,107,107,.2);
+}
+.disallowedEvent .eventMeta b,
+.disallowedEvent p {
+  text-decoration:line-through;
+  text-decoration-thickness:1px;
+}
+.disallowedBadge {
+  display:inline-flex;
+  align-items:center;
+  border-radius:999px;
+  padding:4px 7px;
+  background:rgba(255,107,107,.12);
+  color:#ff8585;
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.05em;
+}
+.eventCorrectionActions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:7px;
+}
+.eventCorrectionActions button {
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#10263a;
+  color:#b9cad6;
+  padding:6px 8px;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+.eventCorrectionActions .disallowGoalButton {
+  border-color:rgba(255,197,69,.25);
+  color:#ffd76b;
+}
+.eventCorrectionActions .removeEventButton {
+  color:#ff9a9a;
+}
+.existingFixtureItem {
+  display:grid;
+  gap:7px;
+}
+.existingFixtureRow {
+  grid-template-columns:minmax(0,1fr) auto;
+}
+.existingFixtureOpen {
+  display:grid;
+  grid-template-columns:56px 30px minmax(0,1fr) 60px 74px;
+  gap:8px;
+  align-items:center;
+  min-width:0;
+  color:white;
+  text-decoration:none;
+}
+.fixtureEditButton {
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:#173149;
+  color:white;
+  padding:7px 9px;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.fixtureEditPanel {
+  padding:12px;
+  border:1px solid rgba(24,226,139,.18);
+  border-radius:12px;
+  background:rgba(24,226,139,.045);
+}
+.fixtureEditGrid {
+  display:grid;
+  grid-template-columns:1fr 1fr 1fr 1.4fr;
+  gap:9px;
+}
+.fixtureEditGrid label,
+.fixtureVenueEdit {
+  display:grid;
+  gap:6px;
+  color:#c9d8e3;
+  font-size:11px;
+  font-weight:900;
+}
+.fixtureEditGrid input,
+.fixtureEditGrid select,
+.fixtureVenueEdit input {
+  width:100%;
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#071522;
+  color:white;
+  padding:9px 10px;
+}
+.fixtureVenueEdit {
+  margin-top:9px;
+}
+.fixtureVenueEdit span {
+  color:var(--muted);
+  font-weight:700;
+}
+.fixtureEditActions {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:9px;
+  margin-top:10px;
+}
+.fixtureCancelButton {
+  border:1px solid rgba(255,107,107,.24);
+  border-radius:10px;
+  background:rgba(255,107,107,.07);
+  color:#ff9a9a;
+  padding:10px 12px;
+  font-weight:900;
+  cursor:pointer;
+}
+
+@media (max-width:620px) {
+  .existingFixtureOpen {
+    grid-template-columns:50px 28px minmax(0,1fr) 54px;
+  }
+  .existingFixtureOpen .existingFixtureStatus {
+    display:none;
+  }
+  .fixtureEditGrid {
+    grid-template-columns:1fr 1fr;
+  }
+  .fixtureEditActions {
+    grid-template-columns:1fr;
+  }
+}
