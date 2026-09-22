@@ -116,6 +116,7 @@ export default function HockeyLiveApp() {
   const [contributeOpen, setContributeOpen] = useState(false);
   const [matchFocusOpen, setMatchFocusOpen] = useState(false);
   const [controllerControlsOpen, setControllerControlsOpen] = useState(false);
+  const [controllerToolsOpen, setControllerToolsOpen] = useState(false);
   const [minuteDraft, setMinuteDraft] = useState(0);
   const [minuteEdited, setMinuteEdited] = useState(false);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
