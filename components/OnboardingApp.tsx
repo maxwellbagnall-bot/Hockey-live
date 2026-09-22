@@ -30,6 +30,7 @@ export default function OnboardingApp() {
     supabase
       .from("teams")
       .select("id,name,age_group,gender,club:clubs(name)")
+      .eq("is_demo", false)
       .order("name")
       .then(({ data, error }) => {
         if (!error) setTeams((data ?? []) as Team[]);
@@ -82,6 +83,7 @@ export default function OnboardingApp() {
     }
 
     setAccessToken(row.access_token);
+    localStorage.setItem("hockey_live_access_token", row.access_token);
     localStorage.setItem("hockey_live_username", username.trim());
 
     // Send a one-tap sign-in link for future access, but do not make
