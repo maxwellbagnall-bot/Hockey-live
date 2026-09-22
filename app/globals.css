@@ -860,3 +860,129 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     grid-template-columns:1fr;
   }
 }
+
+
+/* Match centre quick actions */
+.matchQuickActions {
+  margin-top:18px;
+  padding:16px;
+  border:1px solid rgba(255,255,255,.09);
+  border-radius:18px;
+  background:linear-gradient(180deg,rgba(12,30,47,.96),rgba(7,21,34,.96));
+}
+.quickActionHeading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:12px;
+}
+.quickActionHeading h3 {
+  margin:2px 0 0;
+}
+.quickActionHeading>span {
+  display:inline-flex;
+  min-width:46px;
+  justify-content:center;
+  border-radius:999px;
+  padding:7px 10px;
+  background:rgba(24,226,139,.1);
+  color:var(--green);
+  font-size:12px;
+  font-weight:950;
+}
+.quickGoalGrid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-top:14px;
+}
+.quickGoalButton {
+  display:grid;
+  gap:4px;
+  min-height:74px;
+  border:1px solid rgba(24,226,139,.24);
+  border-radius:14px;
+  background:rgba(24,226,139,.09);
+  color:white;
+  padding:13px 14px;
+  cursor:pointer;
+  text-align:left;
+}
+.quickGoalButton span {
+  color:var(--green);
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:.05em;
+}
+.quickGoalButton b {
+  font-size:16px;
+}
+.quickSecondaryGrid {
+  display:grid;
+  grid-template-columns:1.25fr .75fr;
+  gap:10px;
+  margin-top:10px;
+}
+.quickEventButton,
+.quickShareButton {
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#173149;
+  color:white;
+  padding:12px 13px;
+  cursor:pointer;
+  font-weight:900;
+}
+.quickShareButton {
+  background:transparent;
+}
+.quickCommentBox {
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:8px;
+  margin-top:10px;
+}
+.quickCommentBox input {
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#071522;
+  color:white;
+  padding:12px 13px;
+  outline:none;
+}
+.quickCommentBox input:focus {
+  border-color:rgba(24,226,139,.65);
+  box-shadow:0 0 0 3px rgba(24,226,139,.08);
+}
+.quickCommentBox button {
+  border:0;
+  border-radius:11px;
+  background:var(--green);
+  color:#042217;
+  padding:12px 14px;
+  cursor:pointer;
+  font-weight:950;
+}
+.quickCommentBox button:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
+.quickActionNote {
+  display:block;
+  margin-top:9px;
+  color:#8298aa;
+}
+
+@media (max-width:620px) {
+  .quickGoalGrid,
+  .quickSecondaryGrid {
+    grid-template-columns:1fr;
+  }
+  .quickCommentBox {
+    grid-template-columns:1fr;
+  }
+  .quickCommentBox button {
+    width:100%;
+  }
+}
