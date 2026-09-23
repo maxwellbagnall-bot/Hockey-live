@@ -2352,3 +2352,292 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     font-size:10px;
   }
 }
+
+
+/* Your Teams hub */
+.teamHub {
+  padding-top:34px;
+}
+.teamHubHeader {
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  gap:18px;
+  margin-bottom:16px;
+}
+.teamHubHeader h2 {
+  margin:3px 0 3px;
+}
+.teamHubCompetition {
+  color:var(--muted);
+  font-size:12px;
+}
+.teamHubTeamSelect {
+  min-width:190px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#071522;
+  color:white;
+  padding:9px 11px;
+  font-weight:800;
+}
+.teamHubTabs {
+  display:grid;
+  grid-template-columns:repeat(4,1fr);
+  gap:7px;
+  margin-bottom:14px;
+}
+.teamHubTabs button {
+  min-height:40px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#0b1b2b;
+  color:#91a8b9;
+  font-size:12px;
+  font-weight:900;
+  cursor:pointer;
+}
+.teamHubTabs button.active {
+  border-color:rgba(24,226,139,.35);
+  background:rgba(24,226,139,.09);
+  color:var(--green);
+}
+.teamOverviewGrid {
+  display:grid;
+  grid-template-columns:1fr 1fr .8fr;
+  gap:12px;
+}
+.teamOverviewCard {
+  min-width:0;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:rgba(255,255,255,.025);
+  padding:14px;
+}
+.teamOverviewCard>span {
+  display:block;
+  margin-bottom:9px;
+  color:#91a8b9;
+  font-size:10px;
+  font-weight:950;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.teamOverviewCard>p {
+  color:var(--muted);
+  font-size:13px;
+}
+.teamHubTextButton {
+  margin-top:10px;
+  border:0;
+  background:transparent;
+  color:var(--green);
+  padding:0;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+}
+.teamPositionCard {
+  display:grid;
+  align-content:start;
+  text-align:left;
+  color:white;
+  cursor:pointer;
+}
+.teamPositionCard>strong {
+  color:var(--green);
+  font-size:54px;
+  line-height:.95;
+}
+.teamPositionCard>p {
+  margin:7px 0 16px;
+}
+.teamPositionCard>b {
+  margin-top:auto;
+  color:var(--green);
+  font-size:11px;
+}
+.teamHubMatchList {
+  display:grid;
+  gap:7px;
+}
+.teamHubMatch {
+  width:100%;
+  display:grid;
+  grid-template-columns:86px 30px minmax(0,1fr) auto;
+  gap:9px;
+  align-items:center;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:11px;
+  background:#081725;
+  color:white;
+  padding:9px 10px;
+  text-align:left;
+  cursor:pointer;
+}
+.teamHubMatch:hover {
+  border-color:rgba(24,226,139,.22);
+}
+.teamHubMatchDate {
+  display:grid;
+  gap:1px;
+  color:#b8c8d4;
+  font-size:11px;
+  font-weight:900;
+}
+.teamHubMatchDate small {
+  color:#708797;
+  font-size:10px;
+}
+.teamHubHA {
+  display:grid;
+  place-items:center;
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  background:rgba(24,226,139,.08);
+  color:var(--green);
+  font-size:10px;
+  font-weight:950;
+}
+.teamHubOpponent {
+  min-width:0;
+  display:grid;
+  gap:1px;
+}
+.teamHubOpponent small {
+  color:#718898;
+  font-size:9px;
+  text-transform:uppercase;
+}
+.teamHubOpponent b {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+}
+.teamHubChevron {
+  color:#688294;
+  font-size:22px;
+}
+.teamHubResultScore {
+  font-size:18px;
+}
+.teamHubLive {
+  border-radius:999px;
+  background:rgba(24,226,139,.1);
+  color:var(--green);
+  padding:5px 7px;
+  font-size:9px;
+  font-weight:950;
+}
+.teamHubPanel {
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:rgba(255,255,255,.02);
+  padding:14px;
+}
+.teamHubPanelHeading {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:12px;
+  margin-bottom:11px;
+}
+.teamHubPanelHeading h3 {
+  margin:0;
+}
+.teamHubPanelHeading a {
+  color:var(--green);
+  font-size:11px;
+  font-weight:900;
+  text-decoration:none;
+}
+.teamHubPanelHeading span {
+  color:var(--muted);
+  font-size:11px;
+}
+.teamHubEmpty,
+.teamHubEmptyText {
+  color:var(--muted);
+}
+.teamHubEmpty {
+  display:grid;
+  gap:5px;
+  padding:18px;
+  border:1px dashed var(--line);
+  border-radius:14px;
+}
+.leagueTableWrap {
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+.leagueTable {
+  width:100%;
+  border-collapse:collapse;
+  min-width:560px;
+}
+.leagueTable th,
+.leagueTable td {
+  padding:9px 8px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  text-align:center;
+  font-size:11px;
+}
+.leagueTable th:nth-child(2),
+.leagueTable td:nth-child(2) {
+  text-align:left;
+}
+.leagueTable th {
+  color:#7890a2;
+  font-size:9px;
+  text-transform:uppercase;
+}
+.leagueTable td {
+  color:#c8d5df;
+}
+.leagueTable tr.myTeamRow {
+  background:rgba(24,226,139,.065);
+}
+.leagueTable tr.myTeamRow td {
+  color:white;
+  font-weight:850;
+}
+
+@media (max-width:760px) {
+  .teamHub {
+    padding-top:22px;
+  }
+  .teamHubHeader {
+    align-items:flex-start;
+    flex-direction:column;
+    gap:10px;
+  }
+  .teamHubTeamSelect {
+    width:100%;
+  }
+  .teamHubTabs {
+    gap:5px;
+    position:sticky;
+    top:0;
+    z-index:30;
+    padding:5px 0;
+    background:#06111c;
+  }
+  .teamHubTabs button {
+    min-height:38px;
+    padding:5px 3px;
+    font-size:10px;
+  }
+  .teamOverviewGrid {
+    grid-template-columns:1fr;
+  }
+  .teamPositionCard>strong {
+    font-size:46px;
+  }
+  .teamHubMatch {
+    grid-template-columns:72px 28px minmax(0,1fr) auto;
+    gap:7px;
+    padding:8px;
+  }
+}
