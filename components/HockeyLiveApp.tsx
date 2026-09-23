@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import TeamHub from "./TeamHub";
 
 type Side = "home" | "away" | null;
 type Confidence = "Community" | "Confirmed" | "Official";
@@ -196,8 +197,9 @@ export default function HockeyLiveApp() {
     () =>
       realMatches.filter(
         (match) =>
-          interestedTeamIds.includes(match.homeTeamId) ||
-          interestedTeamIds.includes(match.awayTeamId)
+          match.status !== "finished" &&
+          (interestedTeamIds.includes(match.homeTeamId) ||
+            interestedTeamIds.includes(match.awayTeamId))
       ),
     [realMatches, interestedTeamIds]
   );
@@ -206,6 +208,7 @@ export default function HockeyLiveApp() {
     () =>
       realMatches.filter(
         (match) =>
+          match.status !== "finished" &&
           !interestedTeamIds.includes(match.homeTeamId) &&
           !interestedTeamIds.includes(match.awayTeamId)
       ),
@@ -803,9 +806,9 @@ export default function HockeyLiveApp() {
         </a>
 
         <nav>
+          <a href="#teams">Your Teams</a>
           <a href="#live">Live</a>
-          <a href="#match">Scores</a>
-          <a href="#how">How it works</a>
+          <a href="#match">Match Centre</a>
         </nav>
 
         <a className="ghostButton" href="/create">Create match</a>
@@ -813,16 +816,16 @@ export default function HockeyLiveApp() {
 
       <section className="hero" id="top">
         <div>
-          <p className="eyebrow">FIELD HOCKEY • LIVE</p>
-          <h1>Every match can be live.</h1>
+          <p className="eyebrow">YOUR HOCKEY • ONE PLACE</p>
+          <h1>Follow your team, not just the score.</h1>
           <p className="heroCopy">
-            Community-powered scores and match updates. One Match Controller keeps
-            the shared clock moving while everyone at the game can report what they see.
+            Fixtures, previous results, league position and live match updates —
+            centred around the teams you actually care about.
           </p>
 
           <div className="heroActions">
-            <a className="primaryButton" href="#live">See live scores</a>
-            <a className="secondaryButton" href="/create">Create a match</a>
+            <a className="primaryButton" href="#teams">Your teams</a>
+            <a className="secondaryButton" href="#live">Live matches</a>
           </div>
 
           {backendError && (
@@ -847,11 +850,16 @@ export default function HockeyLiveApp() {
         </div>
       </section>
 
+      <TeamHub
+        teamIds={interestedTeamIds}
+        onOpenMatch={openMatchCentre}
+      />
+
       <section className="section" id="live">
         <div className="sectionHeading">
           <div>
-            <p className="eyebrow">YOUR HOCKEY</p>
-            <h2>{myTeamMatches.length ? "Your teams" : "Matches"}</h2>
+            <p className="eyebrow">LIVE & UPCOMING</p>
+            <h2>{myTeamMatches.length ? "Your teams next" : "Matches"}</h2>
           </div>
           <span className="demoPill">Community powered</span>
         </div>
