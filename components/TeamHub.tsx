@@ -208,7 +208,7 @@ export default function TeamHub({
   }
 
   function renderMatch(match: TeamMatch, result = false) {
-    const teamIsHome = match.homeTeamId === selectedTeam.id;
+    const teamIsHome = match.homeTeamId === selectedTeamId;
     const opponent = teamIsHome ? match.away : match.home;
     const ourScore = teamIsHome ? match.homeScore : match.awayScore;
     const theirScore = teamIsHome ? match.awayScore : match.homeScore;
