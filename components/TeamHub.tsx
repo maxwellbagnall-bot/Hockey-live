@@ -179,6 +179,7 @@ export default function TeamHub({
   const nextMatch = upcoming.find((match) => match.status === "live") ?? upcoming[0];
   const latestResult = results[0];
   const teamTableRow = table.find((row) => row.team_id === selectedTeamId);
+  const competitionStarted = table.some((row) => row.played > 0);
 
   if (loading) {
     return (
@@ -316,7 +317,7 @@ export default function TeamHub({
             onClick={() => setTab("table")}
           >
             <span>League position</span>
-            {teamTableRow ? (
+            {teamTableRow && competitionStarted ? (
               <>
                 <strong>{teamTableRow.table_position}</strong>
                 <p>
@@ -324,7 +325,7 @@ export default function TeamHub({
                 </p>
               </>
             ) : (
-              <p>Table will appear when competition data is available.</p>
+              <p>Season not started — no completed results yet.</p>
             )}
             <b>View table →</b>
           </button>
@@ -369,6 +370,13 @@ export default function TeamHub({
             <span>{selectedTeam.competitionName}</span>
           </div>
 
+          {!competitionStarted && (
+            <p className="leagueTableNote">
+              No completed league results are in Hockey Live yet. The table will
+              calculate automatically as results are recorded.
+            </p>
+          )}
+
           <div className="leagueTableWrap">
             <table className="leagueTable">
               <thead>
@@ -389,7 +397,7 @@ export default function TeamHub({
                     key={row.team_id}
                     className={row.team_id === selectedTeam.id ? "myTeamRow" : ""}
                   >
-                    <td>{row.table_position}</td>
+                    <td>{competitionStarted ? row.table_position : "—"}</td>
                     <td>{row.team_name}</td>
                     <td>{row.played}</td>
                     <td>{row.won}</td>
