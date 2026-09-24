@@ -180,6 +180,10 @@ export default function TeamHub({
   const latestResult = results[0];
   const teamTableRow = table.find((row) => row.team_id === selectedTeamId);
   const competitionStarted = table.some((row) => row.played > 0);
+  const maxPlayed = table.length ? Math.max(...table.map((row) => row.played)) : 0;
+  const minPlayed = table.length ? Math.min(...table.map((row) => row.played)) : 0;
+  const tableIsPartial = competitionStarted && minPlayed < maxPlayed;
+  const selectedTeamHasResult = Boolean(teamTableRow && teamTableRow.played > 0);
 
   if (loading) {
     return (
@@ -317,13 +321,16 @@ export default function TeamHub({
             onClick={() => setTab("table")}
           >
             <span>League position</span>
-            {teamTableRow && competitionStarted ? (
+            {teamTableRow && competitionStarted && selectedTeamHasResult ? (
               <>
                 <strong>{teamTableRow.table_position}</strong>
                 <p>
+                  {tableIsPartial ? "Provisional • " : ""}
                   {teamTableRow.points} pts • {teamTableRow.played} played
                 </p>
               </>
+            ) : competitionStarted ? (
+              <p>Awaiting this team’s first recorded result.</p>
             ) : (
               <p>Season not started — no completed results yet.</p>
             )}
@@ -377,6 +384,13 @@ export default function TeamHub({
             </p>
           )}
 
+          {tableIsPartial && (
+            <p className="leagueTableNote">
+              <b>Partial table.</b> We’re still loading this round’s verified
+              results, so positions are provisional.
+            </p>
+          )}
+
           <div className="leagueTableWrap">
             <table className="leagueTable">
               <thead>
@@ -397,7 +411,11 @@ export default function TeamHub({
                     key={row.team_id}
                     className={row.team_id === selectedTeam.id ? "myTeamRow" : ""}
                   >
-                    <td>{competitionStarted ? row.table_position : "—"}</td>
+                    <td>
+                      {competitionStarted && row.played > 0
+                        ? row.table_position
+                        : "—"}
+                    </td>
                     <td>{row.team_name}</td>
                     <td>{row.played}</td>
                     <td>{row.won}</td>
