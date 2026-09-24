@@ -2653,3 +2653,234 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   font-size:11px;
   line-height:1.4;
 }
+
+
+/* Data admin */
+.dataAdminShell {
+  min-height:100vh;
+  padding:32px clamp(16px,4vw,48px);
+}
+.dataAdminCard {
+  max-width:1120px;
+  margin:0 auto;
+  padding:24px;
+  border:1px solid var(--line);
+  border-radius:22px;
+  background:rgba(7,21,34,.92);
+  box-shadow:0 24px 80px rgba(0,0,0,.22);
+}
+.dataAdminTopbar {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:18px;
+}
+.dataAdminTopbar h1,
+.dataAdminCard>h1 {
+  margin:0;
+  font-size:clamp(38px,6vw,64px);
+}
+.dataAdminIntro {
+  max-width:720px;
+  color:#aebfcb;
+  line-height:1.55;
+}
+.dataAdminFields {
+  display:grid;
+  grid-template-columns:1.1fr 1fr 1.7fr;
+  gap:12px;
+  margin:24px 0;
+}
+.dataAdminFields label {
+  display:grid;
+  gap:7px;
+  color:#c9d8e3;
+  font-size:11px;
+  font-weight:900;
+}
+.dataAdminFields input,
+.dataAdminFields select,
+.dataAdminPasteBlock textarea {
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#071522;
+  color:white;
+  padding:10px 11px;
+}
+.dataAdminPasteBlock {
+  display:grid;
+  gap:10px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:rgba(255,255,255,.02);
+}
+.dataAdminPasteHeading {
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:14px;
+}
+.dataAdminPasteHeading>div {
+  display:grid;
+  gap:3px;
+}
+.dataAdminPasteHeading span {
+  color:var(--muted);
+  font-size:11px;
+}
+.dataAdminExampleButton {
+  border:1px solid var(--line);
+  border-radius:9px;
+  background:#10263a;
+  color:white;
+  padding:8px 10px;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.dataAdminFormat {
+  overflow-x:auto;
+  padding:9px 10px;
+  border-radius:9px;
+  background:#04101a;
+  color:#9fb4c3;
+  font-size:10px;
+  white-space:nowrap;
+}
+.dataAdminPasteBlock textarea {
+  min-height:180px;
+  resize:vertical;
+  line-height:1.6;
+}
+.dataAdminPreview {
+  margin-top:18px;
+}
+.dataAdminPreviewHeading h2 {
+  margin:0 0 10px;
+  font-size:24px;
+}
+.dataAdminPreviewList {
+  display:grid;
+  gap:7px;
+}
+.dataAdminPreviewRow {
+  display:grid;
+  grid-template-columns:32px 140px minmax(0,1fr) 110px;
+  gap:10px;
+  align-items:center;
+  padding:9px 10px;
+  border:1px solid rgba(255,255,255,.06);
+  border-radius:10px;
+  background:#081725;
+}
+.dataAdminPreviewRow.hasError {
+  border-color:rgba(255,107,107,.26);
+  background:rgba(255,107,107,.04);
+}
+.dataAdminLineNo {
+  display:grid;
+  place-items:center;
+  width:25px;
+  height:25px;
+  border-radius:7px;
+  background:#10263a;
+  color:#8297a7;
+  font-size:10px;
+  font-weight:950;
+}
+.dataAdminPreviewDate {
+  color:#9eb1bf;
+  font-size:11px;
+  font-weight:800;
+}
+.dataAdminPreviewTeams {
+  min-width:0;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  gap:8px;
+  align-items:center;
+}
+.dataAdminPreviewTeams b {
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:12px;
+}
+.dataAdminPreviewTeams b:last-child {
+  text-align:right;
+}
+.dataAdminPreviewTeams strong {
+  color:var(--green);
+}
+.dataAdminPreviewStatus {
+  color:var(--green);
+  font-size:10px;
+  font-weight:900;
+  text-align:right;
+}
+.dataAdminPreviewRow.hasError .dataAdminPreviewStatus {
+  color:#ff8d8d;
+}
+.dataAdminMessage {
+  margin-top:16px;
+  padding:11px 12px;
+  border:1px solid rgba(24,226,139,.2);
+  border-radius:11px;
+  background:rgba(24,226,139,.055);
+  color:#bfe9d6;
+  font-size:12px;
+  line-height:1.45;
+}
+.dataAdminActions {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-top:18px;
+}
+.dataAdminActions .primaryButton:disabled {
+  opacity:.45;
+  cursor:not-allowed;
+}
+.dataAdminActions span {
+  color:var(--muted);
+  font-size:11px;
+}
+
+@media (max-width:760px) {
+  .dataAdminShell {
+    padding:12px;
+  }
+  .dataAdminCard {
+    padding:16px;
+    border-radius:16px;
+  }
+  .dataAdminTopbar {
+    flex-direction:column;
+  }
+  .dataAdminFields {
+    grid-template-columns:1fr;
+  }
+  .dataAdminPasteHeading {
+    flex-direction:column;
+  }
+  .dataAdminPreviewRow {
+    grid-template-columns:28px 1fr auto;
+  }
+  .dataAdminPreviewDate {
+    grid-column:2 / 3;
+  }
+  .dataAdminPreviewTeams {
+    grid-column:2 / 4;
+    grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  }
+  .dataAdminPreviewStatus {
+    grid-column:2 / 4;
+    text-align:left;
+  }
+  .dataAdminActions {
+    align-items:stretch;
+    flex-direction:column;
+  }
+}
