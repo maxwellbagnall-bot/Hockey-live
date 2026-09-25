@@ -11,28 +11,55 @@ export default function LiveGate() {
     let mounted = true;
 
     async function checkAccess() {
-      const onboarded = localStorage.getItem("hockey_live_onboarded") === "1";
-      if (onboarded) {
-        if (mounted) setAllowed(true);
-        return;
-      }
+      const { data } = await supabase.auth.getSession();
 
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        if (mounted) setAllowed(true);
-        return;
-      }
+      if (!mounted) return;
 
-      if (mounted) {
+      if (!data.session) {
         setAllowed(false);
         window.location.replace("/");
+        return;
       }
+
+      const { data: profile, error } = await supabase.rpc(
+        "ensure_my_hockey_profile"
+      );
+
+      if (error) {
+        setAllowed(false);
+        window.location.replace("/");
+        return;
+      }
+
+      const row = Array.isArray(profile) ? profile[0] : profile;
+
+      if (!row?.completed_at) {
+        setAllowed(false);
+        window.location.replace("/");
+        return;
+      }
+
+      localStorage.removeItem("hockey_live_access_token");
+      localStorage.removeItem("hockey_live_onboarded");
+      localStorage.removeItem("hockey_live_username");
+      localStorage.removeItem("hockey_live_interests");
+
+      setAllowed(true);
     }
 
     void checkAccess();
 
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (event === "SIGNED_OUT") {
+        window.location.replace("/");
+      }
+    });
+
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
