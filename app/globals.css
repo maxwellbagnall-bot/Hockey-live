@@ -2884,3 +2884,79 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     flex-direction:column;
   }
 }
+
+
+/* Auth account controls */
+.topbarActions {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.accountChip {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:7px 8px 7px 10px;
+  border:1px solid var(--line);
+  border-radius:12px;
+  background:#0b1b2b;
+}
+.accountChip span {
+  max-width:150px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  color:#c8d7e2;
+  font-size:11px;
+  font-weight:900;
+}
+.accountChip button,
+.forgotPasswordButton {
+  border:0;
+  background:transparent;
+  color:var(--green);
+  padding:3px 4px;
+  font-size:10px;
+  font-weight:900;
+  cursor:pointer;
+}
+.forgotPasswordButton {
+  width:max-content;
+  padding:0;
+  margin-top:-3px;
+}
+.onboardingUsernameConfirm {
+  display:grid;
+  gap:7px;
+  margin:18px 0 14px;
+  color:#c9d8e3;
+  font-size:12px;
+  font-weight:900;
+}
+.onboardingUsernameConfirm input {
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:#071522;
+  color:white;
+  padding:11px 12px;
+}
+
+@media (max-width:620px) {
+  .topbarActions {
+    gap:6px;
+  }
+  .topbarActions .ghostButton {
+    display:none;
+  }
+  .accountChip {
+    padding:6px 7px;
+  }
+  .accountChip span {
+    max-width:95px;
+    font-size:10px;
+  }
+  .accountChip button {
+    font-size:9px;
+  }
+}
