@@ -220,8 +220,13 @@ export default function HockeyLiveApp() {
     window.setTimeout(() => setToast(""), 2400);
   }
 
-  function getAccessToken() {
-    return localStorage.getItem("hockey_live_access_token");
+  async function signOut() {
+    await supabase.auth.signOut();
+    localStorage.removeItem("hockey_live_access_token");
+    localStorage.removeItem("hockey_live_onboarded");
+    localStorage.removeItem("hockey_live_username");
+    localStorage.removeItem("hockey_live_interests");
+    window.location.replace("/");
   }
 
   function openMatchCentre(matchId: string) {
@@ -243,7 +248,7 @@ export default function HockeyLiveApp() {
 
   async function loadMyProfile() {
     const { data, error } = await supabase.rpc("get_my_hockey_profile", {
-      p_access_token: getAccessToken() || null
+      p_access_token: null
     });
 
     if (error) return;
@@ -254,21 +259,14 @@ export default function HockeyLiveApp() {
       setMyUsername(row.username ?? "");
 
       const { data: interests } = await supabase.rpc("get_my_team_interests", {
-        p_access_token: getAccessToken() || null
+        p_access_token: null
       });
 
       setInterestedTeamIds(
         (interests ?? []).map((interest: any) => interest.team_id).filter(Boolean)
       );
     } else {
-      try {
-        const saved = JSON.parse(
-          localStorage.getItem("hockey_live_interests") || "[]"
-        );
-        if (Array.isArray(saved)) setInterestedTeamIds(saved);
-      } catch {
-        setInterestedTeamIds([]);
-      }
+      setInterestedTeamIds([]);
     }
   }
 
@@ -384,15 +382,13 @@ export default function HockeyLiveApp() {
   }
 
   async function loadEventPermissions(matchId: string) {
-    const accessToken = getAccessToken() || null;
-
     const [{ data: permissions }, { data: mine }] = await Promise.all([
       supabase.rpc("get_match_permissions", {
-        p_access_token: accessToken,
+        p_access_token: null,
         p_match_id: matchId
       }),
       supabase.rpc("get_my_reported_event_ids", {
-        p_access_token: accessToken,
+        p_access_token: null,
         p_match_id: matchId
       })
     ]);
@@ -408,7 +404,7 @@ export default function HockeyLiveApp() {
     if (!selected) return;
 
     const { data, error } = await supabase.rpc("undo_my_match_report", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_event_id: eventId
     });
 
@@ -436,7 +432,7 @@ export default function HockeyLiveApp() {
     if (!window.confirm("Remove this event as a correction?")) return;
 
     const { error } = await supabase.rpc("void_match_event", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_event_id: eventId
     });
 
@@ -457,7 +453,7 @@ export default function HockeyLiveApp() {
     if (!selected) return;
 
     const { error } = await supabase.rpc("disallow_goal", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_event_id: eventId
     });
 
@@ -581,7 +577,7 @@ export default function HockeyLiveApp() {
 
     async function heartbeat() {
       await supabase.rpc("heartbeat_match_control", {
-        p_access_token: getAccessToken() || null,
+        p_access_token: null,
         p_match_id: selected.id
       });
     }
@@ -597,7 +593,7 @@ export default function HockeyLiveApp() {
 
     const wasStale = selectedControllerStale;
     const { error } = await supabase.rpc("claim_match_control", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_match_id: selected.id
     });
 
@@ -618,7 +614,7 @@ export default function HockeyLiveApp() {
     if (!selected) return;
 
     const { error } = await supabase.rpc("release_match_control", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_match_id: selected.id
     });
 
@@ -638,7 +634,7 @@ export default function HockeyLiveApp() {
     if (!selected) return;
 
     const { error } = await supabase.rpc("control_match_clock", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_match_id: selected.id,
       p_action: action,
       p_period: null,
@@ -686,7 +682,7 @@ export default function HockeyLiveApp() {
     }
 
     const { data, error } = await supabase.rpc("submit_match_report", {
-      p_access_token: getAccessToken() || null,
+      p_access_token: null,
       p_match_id: selected.id,
       p_event_type: kind,
       p_team_id: teamId,
@@ -811,7 +807,13 @@ export default function HockeyLiveApp() {
           <a href="#match">Match Centre</a>
         </nav>
 
-        <a className="ghostButton" href="/create">Create match</a>
+        <div className="topbarActions">
+          <a className="ghostButton" href="/create">Create match</a>
+          <div className="accountChip">
+            <span>{myUsername ? `@${myUsername}` : "Account"}</span>
+            <button onClick={() => void signOut()}>Sign out</button>
+          </div>
+        </div>
       </header>
 
       <section className="hero" id="top">
