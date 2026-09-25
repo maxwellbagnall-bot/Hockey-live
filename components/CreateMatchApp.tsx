@@ -31,10 +31,9 @@ export default function CreateMatchApp() {
 
   useEffect(() => {
     async function initialise() {
-      const onboarded = localStorage.getItem("hockey_live_onboarded") === "1";
       const { data: authData } = await supabase.auth.getUser();
 
-      if (!onboarded && !authData.user) {
+      if (!authData.user) {
         window.location.replace("/");
         return;
       }
@@ -106,13 +105,12 @@ export default function CreateMatchApp() {
       return;
     }
 
-    const accessToken = localStorage.getItem("hockey_live_access_token");
     const start = new Date(`${matchDate}T${matchTime}:00`);
 
     setBusy(true);
 
     const { data, error } = await supabase.rpc("create_hockey_match", {
-      p_access_token: accessToken || null,
+      p_access_token: null,
       p_competition_id: competitionId,
       p_home_team_id: homeTeamId,
       p_away_team_id: awayTeamId,
