@@ -67,16 +67,12 @@ export default function SeasonSetupApp() {
 
   useEffect(() => {
     async function initialise() {
-      const onboarded = localStorage.getItem("hockey_live_onboarded") === "1";
       const { data: authData } = await supabase.auth.getUser();
 
-      if (!onboarded && !authData.user) {
+      if (!authData.user) {
         window.location.replace("/");
         return;
       }
-
-      const accessToken =
-        localStorage.getItem("hockey_live_access_token") || null;
 
       const [{ data: comps }, { data: memberships }, { data: interests }] =
         await Promise.all([
@@ -88,7 +84,7 @@ export default function SeasonSetupApp() {
             .from("competition_teams")
             .select("competition_id,team:teams(id,name,is_demo)"),
           supabase.rpc("get_my_team_interests", {
-            p_access_token: accessToken
+            p_access_token: null
           })
         ]);
 
@@ -161,9 +157,6 @@ export default function SeasonSetupApp() {
 
     setLoadingExisting(true);
 
-    const accessToken =
-      localStorage.getItem("hockey_live_access_token") || null;
-
     const [{ data, error }, { data: manageable }] = await Promise.all([
       supabase
         .from("matches")
@@ -176,7 +169,7 @@ export default function SeasonSetupApp() {
         .or(`home_team_id.eq.${teamId},away_team_id.eq.${teamId}`)
         .order("starts_at", { ascending: true }),
       supabase.rpc("get_my_manageable_fixture_ids", {
-        p_access_token: accessToken,
+        p_access_token: null,
         p_competition_id: competitionId
       })
     ]);
@@ -300,8 +293,7 @@ export default function SeasonSetupApp() {
 
     setFixtureBusy(true);
     const { error } = await supabase.rpc("update_hockey_fixture", {
-      p_access_token:
-        localStorage.getItem("hockey_live_access_token") || null,
+      p_access_token: null,
       p_match_id: editingFixtureId,
       p_home_team_id: homeTeamId,
       p_away_team_id: awayTeamId,
@@ -327,8 +319,7 @@ export default function SeasonSetupApp() {
 
     setFixtureBusy(true);
     const { error } = await supabase.rpc("cancel_hockey_fixture", {
-      p_access_token:
-        localStorage.getItem("hockey_live_access_token") || null,
+      p_access_token: null,
       p_match_id: matchId
     });
     setFixtureBusy(false);
@@ -361,15 +352,13 @@ export default function SeasonSetupApp() {
     let created = 0;
     let existing = 0;
     let failed = 0;
-    const accessToken = localStorage.getItem("hockey_live_access_token");
-
     for (const row of rows) {
       const start = new Date(`${row.date}T${row.time}:00`);
       const homeTeamId = row.side === "home" ? teamId : row.opponentId;
       const awayTeamId = row.side === "home" ? row.opponentId : teamId;
 
       const { data, error } = await supabase.rpc("create_hockey_match", {
-        p_access_token: accessToken || null,
+        p_access_token: null || null,
         p_competition_id: competitionId,
         p_home_team_id: homeTeamId,
         p_away_team_id: awayTeamId,
