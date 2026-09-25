@@ -9,6 +9,7 @@ type Stage =
   | "teams"
   | "login"
   | "forgot"
+  | "reset"
   | "check-email";
 
 type Team = {
@@ -41,6 +42,8 @@ export default function OnboardingApp() {
   const [loginEmail, setLoginEmail] = useState("");
   const [loginPassword, setLoginPassword] = useState("");
   const [forgotEmail, setForgotEmail] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetConfirm, setResetConfirm] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [search, setSearch] = useState("");
@@ -64,9 +67,20 @@ export default function OnboardingApp() {
     let mounted = true;
 
     async function restoreExistingUser() {
+      const recoveryLink =
+        window.location.hash.includes("type=recovery") ||
+        window.location.search.includes("type=recovery");
+
       const { data } = await supabase.auth.getSession();
 
       if (!mounted) return;
+
+      if (recoveryLink && data.session) {
+        clearLegacyIdentity();
+        setStage("reset");
+        setRestoringSession(false);
+        return;
+      }
 
       if (!data.session) {
         setRestoringSession(false);
@@ -90,8 +104,20 @@ export default function OnboardingApp() {
 
     void restoreExistingUser();
 
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((event) => {
+      if (!mounted) return;
+      if (event === "PASSWORD_RECOVERY") {
+        clearLegacyIdentity();
+        setStage("reset");
+        setRestoringSession(false);
+      }
+    });
+
     return () => {
       mounted = false;
+      subscription.unsubscribe();
     };
   }, []);
 
@@ -226,7 +252,7 @@ export default function OnboardingApp() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(
       forgotEmail.trim(),
-      { redirectTo: `${window.location.origin}/reset-password` }
+      { redirectTo: window.location.origin }
     );
 
     setBusy(false);
@@ -240,6 +266,37 @@ export default function OnboardingApp() {
     setMessage(
       `We sent a password reset link to ${forgotEmail.trim()}.`
     );
+  }
+
+  async function saveRecoveredPassword(event: FormEvent) {
+    event.preventDefault();
+    setMessage("");
+
+    if (resetPassword.length < 8) {
+      setMessage("Use at least 8 characters.");
+      return;
+    }
+
+    if (resetPassword !== resetConfirm) {
+      setMessage("The passwords do not match.");
+      return;
+    }
+
+    setBusy(true);
+    const { error } = await supabase.auth.updateUser({
+      password: resetPassword
+    });
+    setBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    setMessage("Password updated. Opening Hockey Live…");
+    window.setTimeout(() => {
+      window.location.replace("/live");
+    }, 800);
   }
 
   if (restoringSession) {
@@ -575,6 +632,50 @@ export default function OnboardingApp() {
 
               <button className="primaryButton onboardingSubmit" disabled={busy}>
                 {busy ? "Sending…" : "Send reset email"}
+              </button>
+            </form>
+          </div>
+        </section>
+      )}
+
+      {stage === "reset" && (
+        <section className="onboardingStage">
+          <div className="onboardingCard">
+            <p className="eyebrow">PASSWORD RESET</p>
+            <h2>Choose a new password</h2>
+            <p className="onboardingCardCopy">
+              Enter the password you want to use for Hockey Live.
+            </p>
+
+            <form className="onboardingForm" onSubmit={saveRecoveredPassword}>
+              <label>
+                New password
+                <input
+                  type="password"
+                  value={resetPassword}
+                  onChange={(event) => setResetPassword(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+
+              <label>
+                Confirm password
+                <input
+                  type="password"
+                  value={resetConfirm}
+                  onChange={(event) => setResetConfirm(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+
+              {message && <div className="onboardingMessage">{message}</div>}
+
+              <button className="primaryButton onboardingSubmit" disabled={busy}>
+                {busy ? "Saving…" : "Set password"}
               </button>
             </form>
           </div>
