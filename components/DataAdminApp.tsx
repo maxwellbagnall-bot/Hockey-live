@@ -69,15 +69,11 @@ export default function DataAdminApp() {
   const [importing, setImporting] = useState(false);
   const [message, setMessage] = useState("");
 
-  function getAccessToken() {
-    return localStorage.getItem("hockey_live_access_token") || null;
-  }
-
   useEffect(() => {
     async function load() {
       const { data: adminStatus } = await supabase.rpc(
         "get_my_data_admin_status",
-        { p_access_token: getAccessToken() }
+        { p_access_token: null }
       );
 
       const isAllowed = Boolean(adminStatus);
@@ -221,7 +217,7 @@ export default function DataAdminApp() {
     }));
 
     const { data, error } = await supabase.rpc("import_hockey_results", {
-      p_access_token: getAccessToken(),
+      p_access_token: null,
       p_competition_id: competitionId,
       p_rows: payload,
       p_source_url: sourceUrl.trim(),
