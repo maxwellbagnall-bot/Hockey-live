@@ -358,7 +358,7 @@ export default function SeasonSetupApp() {
       const awayTeamId = row.side === "home" ? row.opponentId : teamId;
 
       const { data, error } = await supabase.rpc("create_hockey_match", {
-        p_access_token: null || null,
+        p_access_token: null,
         p_competition_id: competitionId,
         p_home_team_id: homeTeamId,
         p_away_team_id: awayTeamId,
