@@ -3,7 +3,13 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 
-type Stage = "welcome" | "signup" | "teams" | "login" | "check-email";
+type Stage =
+  | "welcome"
+  | "signup"
+  | "teams"
+  | "login"
+  | "forgot"
+  | "check-email";
 
 type Team = {
   id: string;
@@ -13,39 +19,73 @@ type Team = {
   club?: { name?: string | null } | null;
 };
 
+type Profile = {
+  profile_id: string;
+  username: string;
+  email: string;
+  completed_at: string | null;
+};
+
+function clearLegacyIdentity() {
+  localStorage.removeItem("hockey_live_access_token");
+  localStorage.removeItem("hockey_live_onboarded");
+  localStorage.removeItem("hockey_live_username");
+  localStorage.removeItem("hockey_live_interests");
+}
+
 export default function OnboardingApp() {
   const [stage, setStage] = useState<Stage>("welcome");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loginEmail, setLoginEmail] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [forgotEmail, setForgotEmail] = useState("");
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeams, setSelectedTeams] = useState<string[]>([]);
   const [search, setSearch] = useState("");
   const [pickerOpen, setPickerOpen] = useState(false);
-  const [accessToken, setAccessToken] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [restoringSession, setRestoringSession] = useState(true);
+
+  async function ensureProfile(): Promise<Profile | null> {
+    const { data, error } = await supabase.rpc("ensure_my_hockey_profile");
+    if (error) {
+      setMessage(error.message);
+      return null;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ?? null;
+  }
 
   useEffect(() => {
     let mounted = true;
 
     async function restoreExistingUser() {
-      const onboarded =
-        localStorage.getItem("hockey_live_onboarded") === "1";
-
-      if (onboarded) {
-        window.location.replace("/live");
-        return;
-      }
-
       const { data } = await supabase.auth.getSession();
-      if (data.session) {
+
+      if (!mounted) return;
+
+      if (!data.session) {
+        setRestoringSession(false);
+        return;
+      }
+
+      clearLegacyIdentity();
+      const profile = await ensureProfile();
+
+      if (!mounted) return;
+
+      if (profile?.completed_at) {
         window.location.replace("/live");
         return;
       }
 
-      if (mounted) setRestoringSession(false);
+      if (profile?.username) setUsername(profile.username);
+      setStage("teams");
+      setRestoringSession(false);
     }
 
     void restoreExistingUser();
@@ -95,49 +135,45 @@ export default function OnboardingApp() {
     setBusy(true);
     setMessage("");
 
-    const { data, error } = await supabase.rpc("begin_onboarding", {
-      p_username: username.trim(),
-      p_email: email.trim()
-    });
-
-    if (error) {
-      setBusy(false);
-      setMessage(error.message);
-      return;
-    }
-
-    const row = Array.isArray(data) ? data[0] : data;
-    if (!row?.access_token) {
-      setBusy(false);
-      setMessage("We couldn't start your account. Please try again.");
-      return;
-    }
-
-    setAccessToken(row.access_token);
-    localStorage.setItem("hockey_live_access_token", row.access_token);
-    localStorage.setItem("hockey_live_username", username.trim());
-
-    // Send a one-tap sign-in link for future access, but do not make
-    // email verification a blocker for onboarding.
-    void supabase.auth.signInWithOtp({
+    const { data, error } = await supabase.auth.signUp({
       email: email.trim(),
+      password,
       options: {
-        shouldCreateUser: true,
-        emailRedirectTo: `${window.location.origin}/live`
+        data: { username: username.trim() },
+        emailRedirectTo: window.location.origin
       }
     });
 
     setBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
+    clearLegacyIdentity();
+
+    if (!data.session) {
+      setStage("check-email");
+      setMessage(
+        "Check your email to confirm your account. Then return to Hockey Live and log in."
+      );
+      return;
+    }
+
+    const profile = await ensureProfile();
+    if (profile?.username) setUsername(profile.username);
     setStage("teams");
   }
 
   async function finishSignup() {
-    if (!accessToken) return;
+    if (!username.trim() || selectedTeams.length === 0) return;
+
     setBusy(true);
     setMessage("");
 
-    const { error } = await supabase.rpc("finish_onboarding", {
-      p_access_token: accessToken,
+    const { error } = await supabase.rpc("complete_my_hockey_profile", {
+      p_username: username.trim(),
       p_team_ids: selectedTeams
     });
 
@@ -148,8 +184,7 @@ export default function OnboardingApp() {
       return;
     }
 
-    localStorage.setItem("hockey_live_onboarded", "1");
-    localStorage.setItem("hockey_live_interests", JSON.stringify(selectedTeams));
+    clearLegacyIdentity();
     window.location.href = "/live";
   }
 
@@ -158,12 +193,9 @@ export default function OnboardingApp() {
     setBusy(true);
     setMessage("");
 
-    const { error } = await supabase.auth.signInWithOtp({
+    const { error } = await supabase.auth.signInWithPassword({
       email: loginEmail.trim(),
-      options: {
-        shouldCreateUser: false,
-        emailRedirectTo: `${window.location.origin}/live`
-      }
+      password: loginPassword
     });
 
     setBusy(false);
@@ -173,7 +205,41 @@ export default function OnboardingApp() {
       return;
     }
 
+    clearLegacyIdentity();
+
+    const profile = await ensureProfile();
+    if (!profile) return;
+
+    if (profile.completed_at) {
+      window.location.href = "/live";
+      return;
+    }
+
+    if (profile.username) setUsername(profile.username);
+    setStage("teams");
+  }
+
+  async function sendReset(event: FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.resetPasswordForEmail(
+      forgotEmail.trim(),
+      { redirectTo: `${window.location.origin}/reset-password` }
+    );
+
+    setBusy(false);
+
+    if (error) {
+      setMessage(error.message);
+      return;
+    }
+
     setStage("check-email");
+    setMessage(
+      `We sent a password reset link to ${forgotEmail.trim()}.`
+    );
   }
 
   if (restoringSession) {
@@ -211,23 +277,30 @@ export default function OnboardingApp() {
       {stage === "welcome" && (
         <section className="onboardingWelcome">
           <div className="onboardingPitch">
-            <p className="eyebrow">FIELD HOCKEY • LIVE</p>
-            <h1>Every match can be live.</h1>
+            <p className="eyebrow">YOUR HOCKEY • ONE PLACE</p>
+            <h1>Follow your team, not just the score.</h1>
             <p className="onboardingLead">
-              Live scores, match updates and grassroots hockey — all in one place.
+              Fixtures, results, league tables and live match updates for the
+              hockey teams you care about.
             </p>
 
             <div className="onboardingActions">
-              <button className="primaryButton onboardingPrimary" onClick={() => setStage("signup")}>
-                Get started
+              <button
+                className="primaryButton onboardingPrimary"
+                onClick={() => setStage("signup")}
+              >
+                Create account
               </button>
-              <button className="secondaryButton onboardingSecondary" onClick={() => setStage("login")}>
+              <button
+                className="secondaryButton onboardingSecondary"
+                onClick={() => setStage("login")}
+              >
                 Log in
               </button>
             </div>
 
             <p className="onboardingSmall">
-              Free to join. It takes about 20 seconds.
+              Free to join. Email and password login.
             </p>
           </div>
 
@@ -237,18 +310,18 @@ export default function OnboardingApp() {
               <b>Q3 • 43&apos;</b>
             </div>
             <div className="welcomeTeamRow">
-              <span>Beeston 2s</span><strong>2</strong>
+              <span>Beeston 2</span><strong>2</strong>
             </div>
             <div className="welcomeTeamRow">
-              <span>Nottingham 2s</span><strong>1</strong>
+              <span>Stourport 1</span><strong>1</strong>
             </div>
             <div className="welcomeTimeline">
               <span>GOAL</span>
               <div><b>Beeston score</b><small>39&apos; • Confirmed</small></div>
             </div>
             <div className="welcomeTimeline">
-              <span>SC</span>
-              <div><b>Short corner Nottingham</b><small>36&apos; • Live update</small></div>
+              <span>PC</span>
+              <div><b>Penalty corner</b><small>36&apos; • Live update</small></div>
             </div>
           </div>
         </section>
@@ -259,9 +332,9 @@ export default function OnboardingApp() {
           <div className="onboardingCard">
             <div className="stepCount">1 of 2</div>
             <p className="eyebrow">JOIN HOCKEY LIVE</p>
-            <h2>Create your profile</h2>
+            <h2>Create your account</h2>
             <p className="onboardingCardCopy">
-              Just a username and email to get started.
+              Choose a username, then use your email and password whenever you log in.
             </p>
 
             <form className="onboardingForm" onSubmit={startSignup}>
@@ -290,17 +363,25 @@ export default function OnboardingApp() {
                 />
               </label>
 
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="At least 8 characters"
+                  autoComplete="new-password"
+                  minLength={8}
+                  required
+                />
+              </label>
+
               {message && <div className="onboardingMessage">{message}</div>}
 
               <button className="primaryButton onboardingSubmit" disabled={busy}>
-                {busy ? "Creating profile…" : "Continue"}
+                {busy ? "Creating account…" : "Continue"}
               </button>
             </form>
-
-            <p className="privacyNote">
-              We use your email for account access and Hockey Live service messages.
-              Marketing preferences can be chosen separately later.
-            </p>
           </div>
         </section>
       )}
@@ -312,8 +393,19 @@ export default function OnboardingApp() {
             <p className="eyebrow">PERSONALISE YOUR FEED</p>
             <h2>Which teams are you interested in?</h2>
             <p className="onboardingCardCopy">
-              Select as many as you like. We&apos;ll use these to shape your Hockey Live feed.
+              Select as many as you like. You can change these later.
             </p>
+
+            <label className="onboardingUsernameConfirm">
+              Your username
+              <input
+                value={username}
+                onChange={(event) => setUsername(event.target.value)}
+                minLength={2}
+                maxLength={40}
+                required
+              />
+            </label>
 
             <div className="teamPicker">
               <button
@@ -368,7 +460,11 @@ export default function OnboardingApp() {
             {chosen.length > 0 && (
               <div className="selectedTeamChips">
                 {chosen.map((team) => (
-                  <button key={team.id} onClick={() => toggleTeam(team.id)} type="button">
+                  <button
+                    key={team.id}
+                    onClick={() => toggleTeam(team.id)}
+                    type="button"
+                  >
                     {team.name} <span>×</span>
                   </button>
                 ))}
@@ -380,7 +476,7 @@ export default function OnboardingApp() {
             <button
               className="primaryButton onboardingSubmit"
               onClick={finishSignup}
-              disabled={busy || selectedTeams.length === 0}
+              disabled={busy || selectedTeams.length === 0 || username.trim().length < 2}
             >
               {busy ? "Saving…" : "Take me to Hockey Live"}
             </button>
@@ -388,11 +484,6 @@ export default function OnboardingApp() {
             {selectedTeams.length === 0 && (
               <p className="teamRequired">Select at least one team to continue.</p>
             )}
-
-            <p className="privacyNote">
-              We&apos;ve also sent a secure sign-in link to your email so you can access
-              the same account on another device later.
-            </p>
           </div>
         </section>
       )}
@@ -403,7 +494,7 @@ export default function OnboardingApp() {
             <p className="eyebrow">WELCOME BACK</p>
             <h2>Log in</h2>
             <p className="onboardingCardCopy">
-              Enter your email and we&apos;ll send you a secure one-tap sign-in link.
+              Use the email address and password for your Hockey Live account.
             </p>
 
             <form className="onboardingForm" onSubmit={login}>
@@ -419,10 +510,71 @@ export default function OnboardingApp() {
                 />
               </label>
 
+              <label>
+                Password
+                <input
+                  type="password"
+                  value={loginPassword}
+                  onChange={(event) => setLoginPassword(event.target.value)}
+                  placeholder="Your password"
+                  autoComplete="current-password"
+                  required
+                />
+              </label>
+
+              <button
+                type="button"
+                className="forgotPasswordButton"
+                onClick={() => {
+                  setForgotEmail(loginEmail);
+                  setMessage("");
+                  setStage("forgot");
+                }}
+              >
+                Forgot password?
+              </button>
+
               {message && <div className="onboardingMessage">{message}</div>}
 
               <button className="primaryButton onboardingSubmit" disabled={busy}>
-                {busy ? "Sending link…" : "Send login link"}
+                {busy ? "Logging in…" : "Log in"}
+              </button>
+            </form>
+
+            <p className="privacyNote">
+              Used Hockey Live before but never created a password? Choose
+              <b> Forgot password</b> to set your first one.
+            </p>
+          </div>
+        </section>
+      )}
+
+      {stage === "forgot" && (
+        <section className="onboardingStage">
+          <div className="onboardingCard">
+            <p className="eyebrow">PASSWORD RESET</p>
+            <h2>Reset your password</h2>
+            <p className="onboardingCardCopy">
+              We’ll email you a secure link to choose a new password.
+            </p>
+
+            <form className="onboardingForm" onSubmit={sendReset}>
+              <label>
+                Email
+                <input
+                  type="email"
+                  value={forgotEmail}
+                  onChange={(event) => setForgotEmail(event.target.value)}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                  required
+                />
+              </label>
+
+              {message && <div className="onboardingMessage">{message}</div>}
+
+              <button className="primaryButton onboardingSubmit" disabled={busy}>
+                {busy ? "Sending…" : "Send reset email"}
               </button>
             </form>
           </div>
@@ -434,11 +586,17 @@ export default function OnboardingApp() {
           <div className="onboardingCard checkEmail">
             <span className="checkEmailIcon">✓</span>
             <p className="eyebrow">CHECK YOUR EMAIL</p>
-            <h2>Your login link is on its way.</h2>
-            <p className="onboardingCardCopy">
-              Tap the secure link we sent to <b>{loginEmail}</b> and you&apos;ll go straight
-              into Hockey Live.
-            </p>
+            <h2>Email sent.</h2>
+            <p className="onboardingCardCopy">{message}</p>
+            <button
+              className="secondaryButton"
+              onClick={() => {
+                setMessage("");
+                setStage("login");
+              }}
+            >
+              Back to log in
+            </button>
           </div>
         </section>
       )}
