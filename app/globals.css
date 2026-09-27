@@ -3102,3 +3102,76 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     max-height:52vh;
   }
 }
+
+
+/* Match type / friendly creator */
+.matchTypePicker {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin:20px 0;
+}
+.matchTypePicker button {
+  display:grid;
+  gap:4px;
+  min-height:84px;
+  padding:14px;
+  border:1px solid var(--line);
+  border-radius:14px;
+  background:#0a1928;
+  color:white;
+  text-align:left;
+  cursor:pointer;
+}
+.matchTypePicker button b {
+  font-size:13px;
+}
+.matchTypePicker button span {
+  color:#8ea4b4;
+  font-size:10px;
+  line-height:1.35;
+}
+.matchTypePicker button.active {
+  border-color:rgba(24,226,139,.42);
+  background:rgba(24,226,139,.08);
+}
+.matchTypePicker button.active b {
+  color:var(--green);
+}
+.friendlyCallout {
+  display:grid;
+  gap:3px;
+  padding:11px 12px;
+  border:1px solid rgba(24,226,139,.18);
+  border-radius:11px;
+  background:rgba(24,226,139,.045);
+}
+.friendlyCallout b {
+  color:var(--green);
+  font-size:11px;
+}
+.friendlyCallout span {
+  color:#9eb1bf;
+  font-size:10px;
+  line-height:1.4;
+}
+.friendlyBadge {
+  width:max-content;
+  margin:8px auto 14px;
+  padding:6px 9px;
+  border-radius:999px;
+  background:rgba(24,226,139,.09);
+  color:var(--green);
+  font-size:9px;
+  font-weight:950;
+  letter-spacing:.06em;
+}
+
+@media (max-width:620px) {
+  .matchTypePicker {
+    grid-template-columns:1fr;
+  }
+  .matchTypePicker button {
+    min-height:72px;
+  }
+}
