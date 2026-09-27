@@ -9,19 +9,30 @@ type Competition = {
   season: string;
 };
 
-type Team = {
+type TeamMembership = {
   id: string;
   name: string;
   competition_id: string;
 };
 
+type HockeyTeam = {
+  id: string;
+  name: string;
+};
+
+type MatchMode = "competition" | "friendly";
+
 export default function CreateMatchApp() {
   const [ready, setReady] = useState(false);
+  const [mode, setMode] = useState<MatchMode>("competition");
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [teams, setTeams] = useState<Team[]>([]);
+  const [teams, setTeams] = useState<TeamMembership[]>([]);
+  const [allTeams, setAllTeams] = useState<HockeyTeam[]>([]);
   const [competitionId, setCompetitionId] = useState("");
   const [homeTeamId, setHomeTeamId] = useState("");
   const [awayTeamId, setAwayTeamId] = useState("");
+  const [friendlyHome, setFriendlyHome] = useState("");
+  const [friendlyAway, setFriendlyAway] = useState("");
   const [matchDate, setMatchDate] = useState("");
   const [matchTime, setMatchTime] = useState("14:00");
   const [venue, setVenue] = useState("");
@@ -38,18 +49,24 @@ export default function CreateMatchApp() {
         return;
       }
 
-      const [{ data: comps }, { data: memberships }] = await Promise.all([
-        supabase
-          .from("competitions")
-          .select("id,name,season")
-          .order("name"),
-        supabase
-          .from("competition_teams")
-          .select("competition_id,team:teams(id,name,is_demo)")
-      ]);
+      const [{ data: comps }, { data: memberships }, { data: teamRows }] =
+        await Promise.all([
+          supabase
+            .from("competitions")
+            .select("id,name,season")
+            .order("name"),
+          supabase
+            .from("competition_teams")
+            .select("competition_id,team:teams(id,name,is_demo)"),
+          supabase
+            .from("teams")
+            .select("id,name")
+            .eq("is_demo", false)
+            .order("name")
+        ]);
 
       const compRows = (comps ?? []) as Competition[];
-      const teamRows: Team[] = (memberships ?? [])
+      const membershipRows: TeamMembership[] = (memberships ?? [])
         .map((row: any) => ({
           competition_id: row.competition_id,
           id: row.team?.id ?? "",
@@ -58,17 +75,22 @@ export default function CreateMatchApp() {
         .filter((row) => row.id && row.name);
 
       setCompetitions(compRows);
-      setTeams(teamRows);
+      setTeams(membershipRows);
+      setAllTeams((teamRows ?? []) as HockeyTeam[]);
 
       const first = compRows[0]?.id ?? "";
       setCompetitionId(first);
 
-      const firstTeams = teamRows.filter((team) => team.competition_id === first);
+      const firstTeams = membershipRows.filter(
+        (team) => team.competition_id === first
+      );
       setHomeTeamId(firstTeams[0]?.id ?? "");
       setAwayTeamId(firstTeams[1]?.id ?? "");
 
       const now = new Date();
-      const localDate = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
+      const localDate = new Date(
+        now.getTime() - now.getTimezoneOffset() * 60000
+      )
         .toISOString()
         .slice(0, 10);
       setMatchDate(localDate);
@@ -90,34 +112,69 @@ export default function CreateMatchApp() {
     setAwayTeamId(nextTeams[1]?.id ?? "");
   }
 
+  function changeMode(nextMode: MatchMode) {
+    setMode(nextMode);
+    setMessage("");
+    setCreated(null);
+  }
+
   async function createMatch(event: FormEvent) {
     event.preventDefault();
     setMessage("");
     setCreated(null);
 
-    if (!homeTeamId || !awayTeamId || !competitionId || !matchDate || !matchTime) {
+    if (!matchDate || !matchTime) {
       setMessage("Please complete the match details.");
       return;
     }
 
-    if (homeTeamId === awayTeamId) {
-      setMessage("Choose two different teams.");
-      return;
+    if (mode === "competition") {
+      if (!homeTeamId || !awayTeamId || !competitionId) {
+        setMessage("Please complete the match details.");
+        return;
+      }
+
+      if (homeTeamId === awayTeamId) {
+        setMessage("Choose two different teams.");
+        return;
+      }
+    } else {
+      if (friendlyHome.trim().length < 2 || friendlyAway.trim().length < 2) {
+        setMessage("Enter both team names.");
+        return;
+      }
+
+      if (
+        friendlyHome.trim().toLowerCase() ===
+        friendlyAway.trim().toLowerCase()
+      ) {
+        setMessage("Choose two different teams.");
+        return;
+      }
     }
 
     const start = new Date(`${matchDate}T${matchTime}:00`);
-
     setBusy(true);
 
-    const { data, error } = await supabase.rpc("create_hockey_match", {
-      p_access_token: null,
-      p_competition_id: competitionId,
-      p_home_team_id: homeTeamId,
-      p_away_team_id: awayTeamId,
-      p_starts_at: start.toISOString(),
-      p_venue: venue.trim()
-    });
+    const request =
+      mode === "competition"
+        ? supabase.rpc("create_hockey_match", {
+            p_access_token: null,
+            p_competition_id: competitionId,
+            p_home_team_id: homeTeamId,
+            p_away_team_id: awayTeamId,
+            p_starts_at: start.toISOString(),
+            p_venue: venue.trim()
+          })
+        : supabase.rpc("create_friendly_hockey_match", {
+            p_access_token: null,
+            p_home_team_name: friendlyHome.trim(),
+            p_away_team_name: friendlyAway.trim(),
+            p_starts_at: start.toISOString(),
+            p_venue: venue.trim()
+          });
 
+    const { data, error } = await request;
     setBusy(false);
 
     if (error) {
@@ -149,8 +206,15 @@ export default function CreateMatchApp() {
     );
   }
 
-  const homeName = availableTeams.find((team) => team.id === homeTeamId)?.name;
-  const awayName = availableTeams.find((team) => team.id === awayTeamId)?.name;
+  const homeName =
+    mode === "friendly"
+      ? friendlyHome.trim()
+      : availableTeams.find((team) => team.id === homeTeamId)?.name;
+
+  const awayName =
+    mode === "friendly"
+      ? friendlyAway.trim()
+      : availableTeams.find((team) => team.id === awayTeamId)?.name;
 
   return (
     <main className="createMatchShell">
@@ -159,68 +223,158 @@ export default function CreateMatchApp() {
           <span className="brandMark">HL</span>
           <span>Hockey Live</span>
         </a>
-        <a className="welcomeBack" href="/live">← Live scores</a>
+        <a className="welcomeBack" href="/live">← Hockey Live</a>
       </header>
 
       <section className="createMatchStage">
         <div className="createMatchCard">
           {!created ? (
             <>
-              <p className="eyebrow">REPORT A MATCH</p>
+              <p className="eyebrow">SET UP A GAME</p>
               <h1>Create a match</h1>
               <p className="createMatchIntro">
-                Set up the fixture in advance. At match time, anyone at the ground
-                can claim Match Controller and run the shared live clock.
+                League game or one-off friendly — set it up now and anyone at
+                the ground can contribute live updates at match time.
               </p>
 
-              <a className="seasonSetupLink" href="/create/season">
-                <span>
-                  <b>Setting up a whole team?</b>
-                  Add the season’s fixtures in one go.
-                </span>
-                <strong>Season setup →</strong>
-              </a>
+              <div className="matchTypePicker" aria-label="Match type">
+                <button
+                  type="button"
+                  className={mode === "competition" ? "active" : ""}
+                  onClick={() => changeMode("competition")}
+                >
+                  <b>Competition match</b>
+                  <span>Counts towards a league or competition</span>
+                </button>
+                <button
+                  type="button"
+                  className={mode === "friendly" ? "active" : ""}
+                  onClick={() => changeMode("friendly")}
+                >
+                  <b>Friendly</b>
+                  <span>Standalone game — no league needed</span>
+                </button>
+              </div>
+
+              {mode === "competition" && (
+                <a className="seasonSetupLink" href="/create/season">
+                  <span>
+                    <b>Setting up a whole team?</b>
+                    Add the season’s fixtures in one go.
+                  </span>
+                  <strong>Season setup →</strong>
+                </a>
+              )}
 
               <form className="createMatchForm" onSubmit={createMatch}>
-                <label>
-                  Competition
-                  <select value={competitionId} onChange={(e) => changeCompetition(e.target.value)}>
-                    {competitions.map((competition) => (
-                      <option key={competition.id} value={competition.id}>
-                        {competition.name} • {competition.season}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                {mode === "competition" ? (
+                  <>
+                    <label>
+                      Competition
+                      <select
+                        value={competitionId}
+                        onChange={(e) => changeCompetition(e.target.value)}
+                      >
+                        {competitions.map((competition) => (
+                          <option key={competition.id} value={competition.id}>
+                            {competition.name} • {competition.season}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
 
-                <div className="createTeamGrid">
-                  <label>
-                    Home team
-                    <select value={homeTeamId} onChange={(e) => setHomeTeamId(e.target.value)}>
-                      {availableTeams.map((team) => (
-                        <option key={team.id} value={team.id}>{team.name}</option>
-                      ))}
-                    </select>
-                  </label>
+                    <div className="createTeamGrid">
+                      <label>
+                        Home team
+                        <select
+                          value={homeTeamId}
+                          onChange={(e) => setHomeTeamId(e.target.value)}
+                        >
+                          {availableTeams.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
 
-                  <label>
-                    Away team
-                    <select value={awayTeamId} onChange={(e) => setAwayTeamId(e.target.value)}>
-                      {availableTeams.map((team) => (
-                        <option key={team.id} value={team.id}>{team.name}</option>
+                      <label>
+                        Away team
+                        <select
+                          value={awayTeamId}
+                          onChange={(e) => setAwayTeamId(e.target.value)}
+                        >
+                          {availableTeams.map((team) => (
+                            <option key={team.id} value={team.id}>
+                              {team.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="friendlyCallout">
+                      <b>No league required.</b>
+                      <span>
+                        Start typing a team already in Hockey Live, or enter a
+                        new team name and we’ll create it automatically.
+                      </span>
+                    </div>
+
+                    <div className="createTeamGrid">
+                      <label>
+                        Home team
+                        <input
+                          list="hockey-live-teams"
+                          value={friendlyHome}
+                          onChange={(e) => setFriendlyHome(e.target.value)}
+                          placeholder="e.g. Beeston U16 Boys"
+                          autoComplete="off"
+                          required
+                        />
+                      </label>
+
+                      <label>
+                        Away team
+                        <input
+                          list="hockey-live-teams"
+                          value={friendlyAway}
+                          onChange={(e) => setFriendlyAway(e.target.value)}
+                          placeholder="e.g. Nottingham HC U16"
+                          autoComplete="off"
+                          required
+                        />
+                      </label>
+                    </div>
+
+                    <datalist id="hockey-live-teams">
+                      {allTeams.map((team) => (
+                        <option key={team.id} value={team.name} />
                       ))}
-                    </select>
-                  </label>
-                </div>
+                    </datalist>
+                  </>
+                )}
 
                 <div className="createTeamGrid">
                   <label>
                     Date
-                    <input type="date" value={matchDate} onChange={(e) => setMatchDate(e.target.value)} required />
+                    <input
+                      type="date"
+                      value={matchDate}
+                      onChange={(e) => setMatchDate(e.target.value)}
+                      required
+                    />
                   </label>
                   <label>
                     Push back
-                    <input type="time" value={matchTime} onChange={(e) => setMatchTime(e.target.value)} required />
+                    <input
+                      type="time"
+                      value={matchTime}
+                      onChange={(e) => setMatchTime(e.target.value)}
+                      required
+                    />
                   </label>
                 </div>
 
@@ -233,10 +387,19 @@ export default function CreateMatchApp() {
                   />
                 </label>
 
-                {message && <div className="onboardingMessage">{message}</div>}
+                {message && (
+                  <div className="onboardingMessage">{message}</div>
+                )}
 
-                <button className="primaryButton createMatchSubmit" disabled={busy}>
-                  {busy ? "Creating match…" : "Create match"}
+                <button
+                  className="primaryButton createMatchSubmit"
+                  disabled={busy}
+                >
+                  {busy
+                    ? "Creating match…"
+                    : mode === "friendly"
+                      ? "Create friendly"
+                      : "Create match"}
                 </button>
               </form>
             </>
@@ -247,21 +410,29 @@ export default function CreateMatchApp() {
                 {created.existed ? "MATCH ALREADY EXISTS" : "MATCH CREATED"}
               </p>
               <h1>{homeName} vs {awayName}</h1>
+              {mode === "friendly" && (
+                <div className="friendlyBadge">FRIENDLY • NO LEAGUE TABLE</div>
+              )}
               <div className="controllerCreatedCallout">
                 <b>
                   {created.existed
                     ? "We found this fixture already."
-                    : "No scorer needs to be assigned now."}
+                    : "The Match Centre is ready."}
                 </b>
                 <p>
                   {created.existed
                     ? "Rather than creating a duplicate, Hockey Live will take you to the existing Match Centre."
-                    : "When the game is about to start, someone at the ground can open this match and tap Claim Match Controller. Everyone else can still report goals, cards, corners and comments."}
+                    : "At push back someone can claim Match Controller. Everyone else can still report goals, cards, corners and comments."}
                 </p>
               </div>
               <div className="createdActions">
-                <a className="primaryButton" href={`/live?match=${created.id}`}>
-                  {created.existed ? "Open existing match" : "Open match centre"}
+                <a
+                  className="primaryButton"
+                  href={`/live?match=${created.id}`}
+                >
+                  {created.existed
+                    ? "Open existing match"
+                    : "Open match centre"}
                 </a>
                 <button
                   className="secondaryButton"
