@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import ShareHockeyLive from "./ShareHockeyLive";
 import TeamHub from "./TeamHub";
 
 type Side = "home" | "away" | null;
@@ -828,6 +829,7 @@ export default function HockeyLiveApp() {
           <div className="heroActions">
             <a className="primaryButton" href="#teams">Your teams</a>
             <a className="secondaryButton" href="#live">Live matches</a>
+            <ShareHockeyLive />
           </div>
 
           {backendError && (

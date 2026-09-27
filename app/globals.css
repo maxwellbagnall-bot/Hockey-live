@@ -77,7 +77,19 @@ nav a:hover { color:var(--green); }
 .eyebrow { color:var(--green); font-size:12px; letter-spacing:.17em; font-weight:900; margin:0 0 12px; }
 h1 { max-width:800px; margin:0; font-size:clamp(50px,8vw,96px); line-height:.94; letter-spacing:-.055em; }
 .heroCopy { max-width:670px; color:#b3c2cf; font-size:clamp(18px,2vw,22px); line-height:1.6; }
-.heroActions { display:flex; gap:12px; margin-top:28px; }
+.heroActions { display:flex; flex-wrap:wrap; gap:12px; margin-top:28px; }
+.shareAppControl {
+  display:grid;
+  gap:7px;
+  align-items:start;
+}
+.shareAppButton { height:100%; }
+.shareAppStatus {
+  color:var(--green);
+  font-size:11px;
+  font-weight:800;
+  line-height:1.35;
+}
 .heroPanel {
   padding:28px;
   border:1px solid var(--line);
@@ -207,6 +219,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .ghostButton { padding:10px 11px; font-size:12px; }
   .heroActions,.scoreActions { display:grid; grid-template-columns:1fr 1fr; }
   .heroActions>*,.scoreActions>* { text-align:center; }
+  .heroActions .shareAppControl { grid-column:1/-1; }
   .bigScore { grid-template-columns:1fr; }
   .bigScore>div:first-child { order:1; }
   .bigScore>strong { order:2; justify-content:center; font-size:86px; }
@@ -260,6 +273,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
 }
 .onboardingActions {
   display:flex;
+  flex-wrap:wrap;
   gap:12px;
   margin-top:32px;
 }
@@ -530,6 +544,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   }
   .onboardingPitch h1 { font-size:57px; }
   .onboardingActions { display:grid; grid-template-columns:1fr 1fr; }
+  .onboardingActions .shareAppControl { grid-column:1/-1; }
   .onboardingPrimary,.onboardingSecondary { padding-inline:12px; }
   .welcomeScoreCard { padding:18px; border-radius:22px; }
   .welcomeTeamRow { font-size:17px; }

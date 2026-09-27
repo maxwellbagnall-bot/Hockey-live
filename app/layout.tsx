@@ -3,10 +3,22 @@ import InstallHockeyLive from "../components/InstallHockeyLive";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://hockey-live-eight.vercel.app"),
   title: "Hockey Live",
   applicationName: "Hockey Live",
   description:
-    "Community-powered live hockey scores, match clocks and updates.",
+    "Fixtures, results, league tables and live match updates for the hockey teams you follow.",
+  alternates: {
+    canonical: "/"
+  },
+  openGraph: {
+    title: "Hockey Live",
+    description:
+      "Fixtures, results, league tables and live match updates for the hockey teams you follow.",
+    url: "/",
+    siteName: "Hockey Live",
+    type: "website"
+  },
   appleWebApp: {
     capable: true,
     title: "Hockey Live",

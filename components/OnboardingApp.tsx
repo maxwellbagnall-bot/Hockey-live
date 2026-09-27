@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import ShareHockeyLive from "./ShareHockeyLive";
 
 type Stage =
   | "welcome"
@@ -354,6 +355,7 @@ export default function OnboardingApp() {
               >
                 Log in
               </button>
+              <ShareHockeyLive />
             </div>
 
             <p className="onboardingSmall">
