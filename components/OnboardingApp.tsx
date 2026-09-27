@@ -194,7 +194,7 @@ export default function OnboardingApp() {
   }
 
   async function finishSignup() {
-    if (!username.trim() || selectedTeams.length === 0) return;
+    if (!username.trim()) return;
 
     setBusy(true);
     setMessage("");
@@ -452,7 +452,8 @@ export default function OnboardingApp() {
             <p className="eyebrow">PERSONALISE YOUR FEED</p>
             <h2>Which teams are you interested in?</h2>
             <p className="onboardingCardCopy">
-              Select as many as you like. You can change these later.
+              Select as many as you like, or skip this for now. You can change
+              your followed teams later.
             </p>
 
             <label className="onboardingUsernameConfirm">
@@ -474,7 +475,7 @@ export default function OnboardingApp() {
               >
                 <span>
                   {selectedTeams.length === 0
-                    ? "Choose teams"
+                    ? "Choose teams (optional)"
                     : `${selectedTeams.length} team${selectedTeams.length === 1 ? "" : "s"} selected`}
                 </span>
                 <span>{pickerOpen ? "▲" : "▼"}</span>
@@ -535,13 +536,15 @@ export default function OnboardingApp() {
             <button
               className="primaryButton onboardingSubmit"
               onClick={finishSignup}
-              disabled={busy || selectedTeams.length === 0 || username.trim().length < 2}
+              disabled={busy || username.trim().length < 2}
             >
               {busy ? "Saving…" : "Take me to Hockey Live"}
             </button>
 
             {selectedTeams.length === 0 && (
-              <p className="teamRequired">Select at least one team to continue.</p>
+              <p className="teamRequired">
+                No team required — you can still see live games and create one.
+              </p>
             )}
           </div>
         </section>

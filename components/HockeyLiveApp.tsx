@@ -809,9 +809,11 @@ export default function HockeyLiveApp() {
         </nav>
 
         <div className="topbarActions">
-          <a className="ghostButton" href="/create">Create match</a>
+          <a className="ghostButton" href="/create">Create game</a>
           <div className="accountChip">
-            <span>{myUsername ? `@${myUsername}` : "Account"}</span>
+            <a className="accountName" href="/profile">
+              {myUsername ? `@${myUsername}` : "Account"}
+            </a>
             <button onClick={() => void signOut()}>Sign out</button>
           </div>
         </div>
@@ -827,7 +829,10 @@ export default function HockeyLiveApp() {
           </p>
 
           <div className="heroActions">
-            <a className="primaryButton" href="#teams">Your teams</a>
+            <a className="primaryButton heroCreateGame" href="/create">
+              Create a game
+            </a>
+            <a className="secondaryButton" href="#teams">Your teams</a>
             <a className="secondaryButton" href="#live">Live matches</a>
             <ShareHockeyLive />
           </div>
@@ -963,6 +968,9 @@ export default function HockeyLiveApp() {
           <div className="emptyFixtureState">
             <b>No matches yet.</b>
             <span>Create the first fixture and it will appear here.</span>
+            <a className="emptyCreateGame" href="/create">
+              Create a game →
+            </a>
           </div>
         )}
       </section>

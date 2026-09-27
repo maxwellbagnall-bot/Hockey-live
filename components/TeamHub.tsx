@@ -205,7 +205,21 @@ export default function TeamHub({
         </div>
         <div className="teamHubEmpty">
           <b>No followed team yet.</b>
-          <span>Choose a team in your profile to see fixtures, results and tables here.</span>
+          <span>
+            Follow a team for a personalised home screen, or carry on without
+            choosing one.
+          </span>
+          <div className="teamHubEmptyActions">
+            <a className="primaryButton" href="/profile">
+              Select / follow a team
+            </a>
+            <a className="secondaryButton" href="#live">
+              See live now
+            </a>
+            <a className="ghostButton" href="/create">
+              Create a game
+            </a>
+          </div>
         </div>
       </section>
     );

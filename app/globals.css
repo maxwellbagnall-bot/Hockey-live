@@ -219,6 +219,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .ghostButton { padding:10px 11px; font-size:12px; }
   .heroActions,.scoreActions { display:grid; grid-template-columns:1fr 1fr; }
   .heroActions>*,.scoreActions>* { text-align:center; }
+  .heroActions .heroCreateGame { grid-column:1/-1; }
   .heroActions .shareAppControl { grid-column:1/-1; }
   .bigScore { grid-template-columns:1fr; }
   .bigScore>div:first-child { order:1; }
@@ -1906,6 +1907,13 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   color:var(--muted);
   font-size:13px;
 }
+.emptyCreateGame {
+  width:max-content;
+  margin-top:7px;
+  color:var(--green);
+  font-size:13px;
+  font-weight:900;
+}
 
 
 /* Season setup */
@@ -2578,10 +2586,19 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
 }
 .teamHubEmpty {
   display:grid;
-  gap:5px;
+  gap:7px;
   padding:18px;
   border:1px dashed var(--line);
   border-radius:14px;
+}
+.teamHubEmptyActions {
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:10px;
+}
+.teamHubEmptyActions a {
+  text-align:center;
 }
 .leagueTableWrap {
   overflow-x:auto;
@@ -2916,7 +2933,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   border-radius:12px;
   background:#0b1b2b;
 }
-.accountChip span {
+.accountChip .accountName {
   max-width:150px;
   overflow:hidden;
   text-overflow:ellipsis;
@@ -2924,6 +2941,10 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   color:#c8d7e2;
   font-size:11px;
   font-weight:900;
+}
+.accountChip .accountName:hover,
+.accountChip .accountName:focus-visible {
+  color:var(--green);
 }
 .accountChip button,
 .forgotPasswordButton {
@@ -2967,11 +2988,117 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .accountChip {
     padding:6px 7px;
   }
-  .accountChip span {
+  .accountChip .accountName {
     max-width:95px;
     font-size:10px;
   }
   .accountChip button {
     font-size:9px;
+  }
+}
+
+
+/* Profile and followed teams */
+.profileShell {
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 80% 10%,rgba(24,226,139,.1),transparent 28%),
+    var(--bg);
+}
+.profileStage {
+  display:grid;
+  place-items:center;
+  padding:42px 18px 90px;
+}
+.profileCard {
+  width:min(760px,100%);
+  padding:clamp(24px,5vw,42px);
+  border:1px solid var(--line);
+  border-radius:28px;
+  background:linear-gradient(180deg,rgba(16,38,58,.98),rgba(8,24,38,.98));
+  box-shadow:0 28px 90px rgba(0,0,0,.28);
+}
+.profileCard h1 {
+  font-size:clamp(46px,7vw,72px);
+}
+.profileIntro {
+  max-width:620px;
+  margin:18px 0 28px;
+  color:#aebfcb;
+  line-height:1.6;
+}
+.profileTeamHeading {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  margin-top:24px;
+}
+.profileTeamHeading>div {
+  display:grid;
+  gap:4px;
+}
+.profileTeamHeading span {
+  color:var(--muted);
+  font-size:12px;
+}
+.profileTeamHeading button {
+  border:0;
+  background:transparent;
+  color:var(--green);
+  font-weight:900;
+  cursor:pointer;
+}
+.profileTeamSearch {
+  width:100%;
+  margin:14px 0 10px;
+}
+.profileTeamList {
+  max-height:380px;
+  overflow:auto;
+  padding:7px;
+  border:1px solid var(--line);
+  border-radius:15px;
+  background:#091827;
+}
+.profileSuccess {
+  margin-top:16px;
+  border:1px solid rgba(24,226,139,.28);
+  border-radius:11px;
+  background:rgba(24,226,139,.08);
+  color:#c9f7df;
+  padding:11px 12px;
+  font-size:13px;
+  font-weight:800;
+}
+.profileActions {
+  display:flex;
+  gap:12px;
+  margin-top:20px;
+}
+.profileActions>* {
+  flex:1;
+  text-align:center;
+}
+.profileActions button:disabled {
+  cursor:not-allowed;
+  opacity:.5;
+}
+
+@media (max-width:620px) {
+  .teamHubEmptyActions,
+  .profileActions {
+    display:grid;
+    grid-template-columns:1fr;
+  }
+  .profileStage {
+    padding:24px 12px 60px;
+  }
+  .profileCard {
+    padding:24px 18px;
+    border-radius:22px;
+  }
+  .profileTeamList {
+    max-height:52vh;
   }
 }
