@@ -28,6 +28,30 @@ type Profile = {
   completed_at: string | null;
 };
 
+const HOCKEY_LIVE_URL = "https://hockey-live-eight.vercel.app";
+
+function friendlyAuthError(message?: string | null) {
+  const value = (message ?? "").toLowerCase();
+
+  if (value.includes("invalid login credentials")) {
+    return "That email or password is incorrect.";
+  }
+  if (value.includes("email not confirmed")) {
+    return "Please confirm your email first. Check your inbox for the Hockey Live email.";
+  }
+  if (value.includes("user already registered")) {
+    return "An account already exists for that email. Log in instead, or use Forgot password.";
+  }
+  if (value.includes("expired") || value.includes("otp")) {
+    return "That email link has expired. Request a fresh one and try again.";
+  }
+  if (value.includes("password")) {
+    return message || "Please check the password and try again.";
+  }
+
+  return message || "Something went wrong. Please try again.";
+}
+
 function clearLegacyIdentity() {
   localStorage.removeItem("hockey_live_access_token");
   localStorage.removeItem("hockey_live_onboarded");
@@ -51,6 +75,7 @@ export default function OnboardingApp() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [emailAction, setEmailAction] = useState<"signup" | "reset" | null>(null);
   const [restoringSession, setRestoringSession] = useState(true);
 
   async function ensureProfile(): Promise<Profile | null> {
@@ -68,6 +93,19 @@ export default function OnboardingApp() {
     let mounted = true;
 
     async function restoreExistingUser() {
+      const query = new URLSearchParams(window.location.search);
+      const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+      const linkError =
+        query.get("error_description") ||
+        hash.get("error_description");
+
+      if (linkError) {
+        setStage("login");
+        setMessage(friendlyAuthError(decodeURIComponent(linkError)));
+        setRestoringSession(false);
+        return;
+      }
+
       const recoveryLink =
         window.location.hash.includes("type=recovery") ||
         window.location.search.includes("type=recovery");
@@ -167,23 +205,31 @@ export default function OnboardingApp() {
       password,
       options: {
         data: { username: username.trim() },
-        emailRedirectTo: window.location.origin
+        emailRedirectTo: HOCKEY_LIVE_URL
       }
     });
 
     setBusy(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(friendlyAuthError(error.message));
+      return;
+    }
+
+    if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setLoginEmail(email.trim());
+      setStage("login");
+      setMessage("That email already has a Hockey Live account. Log in, or use Forgot password.");
       return;
     }
 
     clearLegacyIdentity();
 
     if (!data.session) {
+      setEmailAction("signup");
       setStage("check-email");
       setMessage(
-        "Check your email to confirm your account. Then return to Hockey Live and log in."
+        "Check your email to confirm your account. The link will bring you back to Hockey Live."
       );
       return;
     }
@@ -228,7 +274,7 @@ export default function OnboardingApp() {
     setBusy(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(friendlyAuthError(error.message));
       return;
     }
 
@@ -253,20 +299,43 @@ export default function OnboardingApp() {
 
     const { error } = await supabase.auth.resetPasswordForEmail(
       forgotEmail.trim(),
-      { redirectTo: window.location.origin }
+      { redirectTo: HOCKEY_LIVE_URL }
     );
 
     setBusy(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(friendlyAuthError(error.message));
       return;
     }
 
+    setEmailAction("reset");
     setStage("check-email");
     setMessage(
       `We sent a password reset link to ${forgotEmail.trim()}.`
     );
+  }
+
+  async function resendConfirmation() {
+    if (!email.trim()) return;
+
+    setBusy(true);
+    setMessage("");
+
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: HOCKEY_LIVE_URL }
+    });
+
+    setBusy(false);
+
+    if (error) {
+      setMessage(friendlyAuthError(error.message));
+      return;
+    }
+
+    setMessage(`A new confirmation email has been sent to ${email.trim()}.`);
   }
 
   async function saveRecoveredPassword(event: FormEvent) {
@@ -290,7 +359,7 @@ export default function OnboardingApp() {
     setBusy(false);
 
     if (error) {
-      setMessage(error.message);
+      setMessage(friendlyAuthError(error.message));
       return;
     }
 
@@ -694,15 +763,27 @@ export default function OnboardingApp() {
             <p className="eyebrow">CHECK YOUR EMAIL</p>
             <h2>Email sent.</h2>
             <p className="onboardingCardCopy">{message}</p>
-            <button
-              className="secondaryButton"
-              onClick={() => {
-                setMessage("");
-                setStage("login");
-              }}
-            >
-              Back to log in
-            </button>
+            <div className="checkEmailActions">
+              {emailAction === "signup" && (
+                <button
+                  className="secondaryButton"
+                  disabled={busy}
+                  onClick={() => void resendConfirmation()}
+                >
+                  {busy ? "Sending…" : "Resend confirmation email"}
+                </button>
+              )}
+              <button
+                className="secondaryButton"
+                onClick={() => {
+                  setMessage("");
+                  setEmailAction(null);
+                  setStage("login");
+                }}
+              >
+                Back to log in
+              </button>
+            </div>
           </div>
         </section>
       )}
