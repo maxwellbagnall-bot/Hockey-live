@@ -21,10 +21,12 @@ type HockeyTeam = {
 };
 
 type MatchMode = "competition" | "friendly";
+type PeriodFormat = "quarters" | "halves";
 
 export default function CreateMatchApp() {
   const [ready, setReady] = useState(false);
   const [mode, setMode] = useState<MatchMode>("competition");
+  const [periodFormat, setPeriodFormat] = useState<PeriodFormat>("quarters");
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [teams, setTeams] = useState<TeamMembership[]>([]);
   const [allTeams, setAllTeams] = useState<HockeyTeam[]>([]);
@@ -158,20 +160,22 @@ export default function CreateMatchApp() {
 
     const request =
       mode === "competition"
-        ? supabase.rpc("create_hockey_match", {
+        ? supabase.rpc("create_hockey_match_with_format", {
             p_access_token: null,
             p_competition_id: competitionId,
             p_home_team_id: homeTeamId,
             p_away_team_id: awayTeamId,
             p_starts_at: start.toISOString(),
-            p_venue: venue.trim()
+            p_venue: venue.trim(),
+            p_period_format: periodFormat
           })
-        : supabase.rpc("create_friendly_hockey_match", {
+        : supabase.rpc("create_friendly_hockey_match_with_format", {
             p_access_token: null,
             p_home_team_name: friendlyHome.trim(),
             p_away_team_name: friendlyAway.trim(),
             p_starts_at: start.toISOString(),
-            p_venue: venue.trim()
+            p_venue: venue.trim(),
+            p_period_format: periodFormat
           });
 
     const { data, error } = await request;
@@ -357,6 +361,28 @@ export default function CreateMatchApp() {
                   </>
                 )}
 
+                <div className="matchFormatField">
+                  <span>Game format</span>
+                  <div className="periodFormatPicker">
+                    <button
+                      type="button"
+                      className={periodFormat === "quarters" ? "active" : ""}
+                      onClick={() => setPeriodFormat("quarters")}
+                    >
+                      <b>4 quarters</b>
+                      <small>4 × 15 minutes</small>
+                    </button>
+                    <button
+                      type="button"
+                      className={periodFormat === "halves" ? "active" : ""}
+                      onClick={() => setPeriodFormat("halves")}
+                    >
+                      <b>2 halves</b>
+                      <small>2 × 35 minutes</small>
+                    </button>
+                  </div>
+                </div>
+
                 <div className="createTeamGrid">
                   <label>
                     Date
@@ -410,9 +436,14 @@ export default function CreateMatchApp() {
                 {created.existed ? "MATCH ALREADY EXISTS" : "MATCH CREATED"}
               </p>
               <h1>{homeName} vs {awayName}</h1>
-              {mode === "friendly" && (
-                <div className="friendlyBadge">FRIENDLY • NO LEAGUE TABLE</div>
-              )}
+              <div className="createdMetaBadges">
+                {mode === "friendly" && (
+                  <div className="friendlyBadge">FRIENDLY • NO LEAGUE TABLE</div>
+                )}
+                <div className="friendlyBadge">
+                  {periodFormat === "halves" ? "2 HALVES • 35 MIN" : "4 QUARTERS • 15 MIN"}
+                </div>
+              </div>
               <div className="controllerCreatedCallout">
                 <b>
                   {created.existed
