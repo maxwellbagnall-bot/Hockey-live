@@ -3175,3 +3175,86 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     min-height:72px;
   }
 }
+
+
+/* Match period format */
+.matchFormatField {
+  display:grid;
+  gap:8px;
+}
+.matchFormatField>span,
+.controllerFormatControl>span {
+  color:#c9d8e3;
+  font-size:11px;
+  font-weight:900;
+}
+.periodFormatPicker {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.periodFormatPicker button,
+.controllerFormatControl button {
+  display:grid;
+  gap:2px;
+  border:1px solid var(--line);
+  border-radius:11px;
+  background:#0a1928;
+  color:white;
+  padding:10px 11px;
+  text-align:left;
+  cursor:pointer;
+}
+.periodFormatPicker button.active,
+.controllerFormatControl button.active {
+  border-color:rgba(24,226,139,.4);
+  background:rgba(24,226,139,.08);
+}
+.periodFormatPicker button.active b,
+.controllerFormatControl button.active {
+  color:var(--green);
+}
+.periodFormatPicker small {
+  color:#8399aa;
+  font-size:9px;
+}
+.createdMetaBadges {
+  display:flex;
+  justify-content:center;
+  flex-wrap:wrap;
+  gap:6px;
+  margin:8px 0 14px;
+}
+.createdMetaBadges .friendlyBadge {
+  margin:0;
+}
+.controllerFormatControl {
+  display:grid;
+  gap:7px;
+  margin-top:12px;
+  padding:11px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;
+  background:rgba(255,255,255,.02);
+}
+.controllerFormatControl>div {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:7px;
+}
+.controllerFormatControl button {
+  display:block;
+  text-align:center;
+  font-size:10px;
+  font-weight:900;
+}
+.controllerFormatControl small {
+  color:#8197a8;
+  font-size:9px;
+}
+
+@media (max-width:620px) {
+  .periodFormatPicker {
+    grid-template-columns:1fr 1fr;
+  }
+}
