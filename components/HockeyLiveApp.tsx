@@ -52,6 +52,7 @@ type Match = {
   homeIsDemo: boolean;
   awayIsDemo: boolean;
   matchIsDemo: boolean;
+  periodFormat: "quarters" | "halves";
 };
 
 const EVENT_META: Record<EventKind, { label: string; icon: string }> = {
@@ -276,7 +277,7 @@ export default function HockeyLiveApp() {
       .from("matches")
       .select(
         `id, home_score, away_score, period, minute, status, verification, competition,
-         starts_at, is_demo, cancelled_at, controller_profile_id, controller_username, controller_last_seen_at,
+         starts_at, is_demo, cancelled_at, period_format, controller_profile_id, controller_username, controller_last_seen_at,
          last_controller_username, clock_seconds, clock_running, clock_updated_at,
          home_team:teams!matches_home_team_id_fkey(id,name,is_demo),
          away_team:teams!matches_away_team_id_fkey(id,name,is_demo)`
@@ -313,7 +314,8 @@ export default function HockeyLiveApp() {
       startsAt: row.starts_at ?? null,
       homeIsDemo: Boolean(row.home_team?.is_demo),
       awayIsDemo: Boolean(row.away_team?.is_demo),
-      matchIsDemo: Boolean(row.is_demo)
+      matchIsDemo: Boolean(row.is_demo),
+      periodFormat: row.period_format === "halves" ? "halves" : "quarters"
     }));
 
     setMatches(next);
@@ -628,6 +630,24 @@ export default function HockeyLiveApp() {
     announce("Match control released");
   }
 
+  async function changePeriodFormat(format: "quarters" | "halves") {
+    if (!selected) return;
+
+    const { error } = await supabase.rpc("set_match_period_format", {
+      p_access_token: null,
+      p_match_id: selected.id,
+      p_period_format: format
+    });
+
+    if (error) {
+      announce(error.message);
+      return;
+    }
+
+    await loadMatches();
+    announce(format === "halves" ? "Match changed to 2 halves" : "Match changed to 4 quarters");
+  }
+
   async function controlClock(
     action: "start" | "resume" | "pause" | "next_period" | "set",
     seconds?: number
@@ -650,7 +670,9 @@ export default function HockeyLiveApp() {
     await loadMatches();
 
     if (action === "next_period") {
-      announce(selected.period === "Q4" ? "Match finished" : "Period advanced");
+      const finalPeriod =
+        selected.periodFormat === "halves" ? selected.period === "H2" : selected.period === "Q4";
+      announce(finalPeriod ? "Match finished" : "Period advanced");
     } else if (action === "pause") {
       announce("Shared clock paused");
     } else if (action === "set") {
@@ -1193,8 +1215,37 @@ export default function HockeyLiveApp() {
                     className="secondaryButton"
                     onClick={() => controlClock("next_period")}
                   >
-                    {selected.period === "Q4" ? "Full time" : "End quarter"}
+                    {selected.periodFormat === "halves"
+                      ? selected.period === "H2"
+                        ? "Full time"
+                        : "Half time"
+                      : selected.period === "Q4"
+                        ? "Full time"
+                        : "End quarter"}
                   </button>
+                </div>
+
+                <div className="controllerFormatControl">
+                  <span>Game format</span>
+                  <div>
+                    <button
+                      className={selected.periodFormat === "quarters" ? "active" : ""}
+                      onClick={() => void changePeriodFormat("quarters")}
+                    >
+                      4 quarters
+                    </button>
+                    <button
+                      className={selected.periodFormat === "halves" ? "active" : ""}
+                      onClick={() => void changePeriodFormat("halves")}
+                    >
+                      2 halves
+                    </button>
+                  </div>
+                  <small>
+                    {selected.periodFormat === "halves"
+                      ? "2 × 35 minutes"
+                      : "4 × 15 minutes"}
+                  </small>
                 </div>
 
                 <div className="clockCorrection">
