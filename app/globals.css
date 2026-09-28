@@ -3258,3 +3258,25 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     grid-template-columns:1fr 1fr;
   }
 }
+
+
+.checkEmailActions {
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:9px;
+  margin-top:12px;
+}
+.checkEmailActions .secondaryButton:disabled {
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+@media (max-width:620px) {
+  .checkEmailActions {
+    flex-direction:column;
+  }
+  .checkEmailActions .secondaryButton {
+    width:100%;
+  }
+}
