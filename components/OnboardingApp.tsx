@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import ShareHockeyLive from "./ShareHockeyLive";
+import HelpPopup from "./HelpPopup";
 
 type Stage =
   | "welcome"
@@ -77,6 +78,11 @@ export default function OnboardingApp() {
   const [message, setMessage] = useState("");
   const [emailAction, setEmailAction] = useState<"signup" | "reset" | null>(null);
   const [restoringSession, setRestoringSession] = useState(true);
+  const [addTeamOpen, setAddTeamOpen] = useState(false);
+  const [newClubName, setNewClubName] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
+  const [addingTeam, setAddingTeam] = useState(false);
+  const [addTeamMessage, setAddTeamMessage] = useState("");
 
   async function ensureProfile(): Promise<Profile | null> {
     const { data, error } = await supabase.rpc("ensure_my_hockey_profile");
@@ -185,6 +191,28 @@ export default function OnboardingApp() {
     );
   }, [search, teams]);
 
+  const possibleTeams = useMemo(() => {
+    const clubNeedle = newClubName.trim().toLowerCase();
+    const teamNeedle = newTeamName.trim().toLowerCase();
+
+    if (clubNeedle.length < 2 && teamNeedle.length < 2) return [];
+
+    const terms = `${clubNeedle} ${teamNeedle}`
+      .split(/\s+/)
+      .filter((term) => term.length > 1);
+
+    return teams
+      .map((team) => {
+        const haystack = `${team.club?.name ?? ""} ${team.name}`.toLowerCase();
+        const matches = terms.filter((term) => haystack.includes(term)).length;
+        return { team, matches };
+      })
+      .filter(({ matches }) => matches >= Math.max(1, Math.ceil(terms.length * 0.6)))
+      .sort((a, b) => b.matches - a.matches)
+      .slice(0, 4)
+      .map(({ team }) => team);
+  }, [newClubName, newTeamName, teams]);
+
   const chosen = teams.filter((team) => selectedTeams.includes(team.id));
 
   function toggleTeam(id: string) {
@@ -192,6 +220,75 @@ export default function OnboardingApp() {
       current.includes(id)
         ? current.filter((teamId) => teamId !== id)
         : [...current, id]
+    );
+  }
+
+  function chooseExistingTeam(team: Team) {
+    setSelectedTeams((current) =>
+      current.includes(team.id) ? current : [...current, team.id]
+    );
+    setAddTeamOpen(false);
+    setNewClubName("");
+    setNewTeamName("");
+    setAddTeamMessage("");
+    setMessage(`${team.name} selected — we’ll use the team already in Hockey Live.`);
+  }
+
+  async function addCommunityTeam(event: FormEvent) {
+    event.preventDefault();
+
+    const clubName = newClubName.trim();
+    const teamName = newTeamName.trim();
+
+    if (clubName.length < 2 || teamName.length < 2) {
+      setAddTeamMessage("Enter both the club and team name.");
+      return;
+    }
+
+    setAddingTeam(true);
+    setAddTeamMessage("");
+
+    const { data, error } = await supabase.rpc("community_add_team", {
+      p_club_name: clubName,
+      p_team_name: teamName
+    });
+
+    setAddingTeam(false);
+
+    if (error) {
+      setAddTeamMessage(error.message);
+      return;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row?.team_id) {
+      setAddTeamMessage("We couldn’t add that team. Please try again.");
+      return;
+    }
+
+    const addedTeam: Team = {
+      id: row.team_id,
+      name: row.team_name,
+      age_group: null,
+      gender: null,
+      club: { name: row.club_name }
+    };
+
+    setTeams((current) => {
+      const exists = current.some((team) => team.id === addedTeam.id);
+      return exists ? current : [...current, addedTeam].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    setSelectedTeams((current) =>
+      current.includes(addedTeam.id) ? current : [...current, addedTeam.id]
+    );
+    setNewClubName("");
+    setNewTeamName("");
+    setAddTeamOpen(false);
+    setSearch("");
+    setMessage(
+      row.already_existed
+        ? `${addedTeam.name} already existed — we’ve selected it for you.`
+        : `${addedTeam.name} added for the Hockey Live community and selected.`
     );
   }
 
@@ -388,17 +485,20 @@ export default function OnboardingApp() {
           <span className="brandMark">HL</span>
           <span>Hockey Live</span>
         </a>
-        {stage !== "welcome" && (
-          <button
-            className="welcomeBack"
-            onClick={() => {
-              setMessage("");
-              setStage("welcome");
-            }}
-          >
-            ← Back
-          </button>
-        )}
+        <div className="onboardingHeaderActions">
+          <HelpPopup />
+          {stage !== "welcome" && (
+            <button
+              className="welcomeBack"
+              onClick={() => {
+                setMessage("");
+                setStage("welcome");
+              }}
+            >
+              ← Back
+            </button>
+          )}
+        </div>
       </header>
 
       {stage === "welcome" && (
@@ -580,6 +680,78 @@ export default function OnboardingApp() {
                     ))}
                     {filteredTeams.length === 0 && (
                       <div className="noTeams">No teams found.</div>
+                    )}
+                  </div>
+
+                  <div className="communityAddTeam">
+                    <button
+                      type="button"
+                      className="communityAddTeamButton"
+                      onClick={() => {
+                        setAddTeamOpen((open) => !open);
+                        setAddTeamMessage("");
+                      }}
+                    >
+                      Can’t see your team? Add it
+                    </button>
+
+                    {addTeamOpen && (
+                      <form className="communityAddTeamForm" onSubmit={addCommunityTeam}>
+                        <p className="communityAddHint">
+                          Add it once and it becomes the shared team everyone can use.
+                          We’ll show similar teams first to help avoid duplicates.
+                        </p>
+
+                        <label>
+                          Club
+                          <input
+                            value={newClubName}
+                            onChange={(event) => setNewClubName(event.target.value)}
+                            placeholder="e.g. Rugby & East Warwickshire"
+                            autoComplete="off"
+                            required
+                          />
+                        </label>
+
+                        <label>
+                          Team
+                          <input
+                            value={newTeamName}
+                            onChange={(event) => setNewTeamName(event.target.value)}
+                            placeholder="e.g. Rugby 3"
+                            autoComplete="off"
+                            required
+                          />
+                        </label>
+
+                        {possibleTeams.length > 0 && (
+                          <div className="possibleTeams">
+                            <span className="communityAddHint">Is it one of these?</span>
+                            {possibleTeams.map((team) => (
+                              <button
+                                type="button"
+                                key={team.id}
+                                onClick={() => chooseExistingTeam(team)}
+                              >
+                                <b>{team.name}</b>
+                                {team.club?.name ? ` • ${team.club.name}` : ""}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {addTeamMessage && (
+                          <div className="communityAddMessage">{addTeamMessage}</div>
+                        )}
+
+                        <button
+                          className="primaryButton"
+                          type="submit"
+                          disabled={addingTeam}
+                        >
+                          {addingTeam ? "Adding team…" : "Add this team"}
+                        </button>
+                      </form>
                     )}
                   </div>
                 </div>
