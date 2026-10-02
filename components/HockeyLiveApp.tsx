@@ -151,6 +151,7 @@ export default function HockeyLiveApp() {
   >(null);
   const [minuteDraft, setMinuteDraft] = useState(0);
   const [minuteEdited, setMinuteEdited] = useState(false);
+  const [viewerCount, setViewerCount] = useState<number | null>(null);
   const [myProfileId, setMyProfileId] = useState<string | null>(null);
   const [myUsername, setMyUsername] = useState("");
   const [interestedTeamIds, setInterestedTeamIds] = useState<string[]>([]);
@@ -574,6 +575,32 @@ export default function HockeyLiveApp() {
       document.body.style.overflow = "";
     };
   }, [matchFocusOpen]);
+
+  useEffect(() => {
+    if (!selected || !matchFocusOpen || selected.status !== "live") {
+      setViewerCount(null);
+      return;
+    }
+
+    setViewerCount(null);
+    const presenceKey = `viewer-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const channel = supabase
+      .channel(`hockey-live-viewers-${selected.id}`, {
+        config: { presence: { key: presenceKey } }
+      })
+      .on("presence", { event: "sync" }, () => {
+        setViewerCount(Object.keys(channel.presenceState()).length);
+      })
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          await channel.track({ watching: true });
+        }
+      });
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [selected?.id, selected?.status, matchFocusOpen]);
 
   useEffect(() => {
     if (!selected || !myProfileId) return;
@@ -1028,6 +1055,12 @@ export default function HockeyLiveApp() {
               <span className={`trust ${trustClass(selected.trust)}`}>
                 {selected.trust}
               </span>
+              {selected.status === "live" && (
+                <span className="viewerCount" aria-live="polite">
+                  <span className="viewerCountDot" />
+                  {viewerCount === null ? "Connecting…" : `${viewerCount} watching now`}
+                </span>
+              )}
             </div>
 
             <div className="focusScoreRow">
@@ -1101,6 +1134,12 @@ export default function HockeyLiveApp() {
               <span className={`trust ${trustClass(selected.trust)}`}>
                 {selected.trust}
               </span>
+              {selected.status === "live" && (
+                <span className="viewerCount" aria-live="polite">
+                  <span className="viewerCountDot" />
+                  {viewerCount === null ? "Connecting…" : `${viewerCount} watching now`}
+                </span>
+              )}
             </div>
 
             <p className="competition">{selected.competition}</p>
