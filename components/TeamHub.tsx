@@ -211,7 +211,7 @@ export default function TeamHub({
           </span>
           <div className="teamHubEmptyActions">
             <a className="primaryButton" href="/profile">
-              Select / follow a team
+              Manage my teams
             </a>
             <a className="secondaryButton" href="#live">
               See live now
@@ -274,22 +274,27 @@ export default function TeamHub({
           </span>
         </div>
 
-        {teams.length > 1 && (
-          <select
-            className="teamHubTeamSelect"
-            value={selectedTeamId}
-            onChange={(event) => {
-              setSelectedTeamId(event.target.value);
-              setTab("overview");
-            }}
-          >
-            {teams.map((team) => (
-              <option key={team.id} value={team.id}>
-                {team.name}
-              </option>
-            ))}
-          </select>
-        )}
+        <div className="teamHubHeaderActions">
+          {teams.length > 1 && (
+            <select
+              className="teamHubTeamSelect"
+              value={selectedTeamId}
+              onChange={(event) => {
+                setSelectedTeamId(event.target.value);
+                setTab("overview");
+              }}
+            >
+              {teams.map((team) => (
+                <option key={team.id} value={team.id}>
+                  {team.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <a className="secondaryButton manageTeamsButton" href="/profile">
+            Manage my teams
+          </a>
+        </div>
       </div>
 
       <div className="teamHubTabs" role="tablist" aria-label="Team pages">
