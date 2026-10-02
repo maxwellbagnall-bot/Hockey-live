@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
+import HelpPopup from "./HelpPopup";
 
 type Competition = {
   id: string;
@@ -227,7 +228,10 @@ export default function CreateMatchApp() {
           <span className="brandMark">HL</span>
           <span>Hockey Live</span>
         </a>
-        <a className="welcomeBack" href="/live">← Hockey Live</a>
+        <div className="onboardingHeaderActions">
+          <HelpPopup />
+          <a className="welcomeBack" href="/live">← Hockey Live</a>
+        </div>
       </header>
 
       <section className="createMatchStage">
@@ -370,7 +374,6 @@ export default function CreateMatchApp() {
                       onClick={() => setPeriodFormat("quarters")}
                     >
                       <b>4 quarters</b>
-                      <small>4 × 15 minutes</small>
                     </button>
                     <button
                       type="button"
@@ -378,7 +381,6 @@ export default function CreateMatchApp() {
                       onClick={() => setPeriodFormat("halves")}
                     >
                       <b>2 halves</b>
-                      <small>2 × 35 minutes</small>
                     </button>
                   </div>
                 </div>
@@ -441,7 +443,7 @@ export default function CreateMatchApp() {
                   <div className="friendlyBadge">FRIENDLY • NO LEAGUE TABLE</div>
                 )}
                 <div className="friendlyBadge">
-                  {periodFormat === "halves" ? "2 HALVES • 35 MIN" : "4 QUARTERS • 15 MIN"}
+                  {periodFormat === "halves" ? "2 HALVES" : "4 QUARTERS"}
                 </div>
               </div>
               <div className="controllerCreatedCallout">
