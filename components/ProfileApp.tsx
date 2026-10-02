@@ -139,8 +139,7 @@ export default function ProfileApp() {
     setMessage(`${team.name} selected — we’ll use the team already in Hockey Live.`);
   }
 
-  async function addCommunityTeam(event: FormEvent) {
-    event.preventDefault();
+  async function addCommunityTeam() {
 
     const clubName = newClubName.trim();
     const teamName = newTeamName.trim();
@@ -380,7 +379,7 @@ export default function ProfileApp() {
                   className="primaryButton"
                   type="button"
                   disabled={addingTeam}
-                  onClick={(event) => void addCommunityTeam(event as unknown as FormEvent)}
+                  onClick={() => void addCommunityTeam()}
                 >
                   {addingTeam ? "Adding team…" : "Add this team"}
                 </button>
