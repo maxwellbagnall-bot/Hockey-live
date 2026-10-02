@@ -589,7 +589,7 @@ export default function HockeyLiveApp() {
         config: { presence: { key: presenceKey } }
       })
       .on("presence", { event: "sync" }, () => {
-        setViewerCount(Object.keys(channel.presenceState()).length);
+        setViewerCount(Math.max(0, Object.keys(channel.presenceState()).length - 1));
       })
       .subscribe(async (status) => {
         if (status === "SUBSCRIBED") {
@@ -1058,7 +1058,7 @@ export default function HockeyLiveApp() {
               {selected.status === "live" && (
                 <span className="viewerCount" aria-live="polite">
                   <span className="viewerCountDot" />
-                  {viewerCount === null ? "Connecting…" : `${viewerCount} watching now`}
+                  {viewerCount === null ? "Connecting…" : viewerCount === 0 ? "No other viewers yet" : `${viewerCount} other ${viewerCount === 1 ? "person" : "people"} watching`}
                 </span>
               )}
             </div>
