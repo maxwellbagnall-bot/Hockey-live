@@ -3418,3 +3418,14 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   padding:9px 10px;
   cursor:pointer;
 }
+
+
+.onboardingHeaderActions {
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+@media (max-width:620px) {
+  .onboardingHeaderActions { gap:6px; }
+  .onboardingHeaderActions .helpButton { padding:8px 10px; font-size:11px; }
+}
