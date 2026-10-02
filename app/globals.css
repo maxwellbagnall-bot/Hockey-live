@@ -2395,6 +2395,17 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   color:var(--muted);
   font-size:12px;
 }
+.teamHubHeaderActions {
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:9px;
+  flex-wrap:wrap;
+}
+.manageTeamsButton {
+  white-space:nowrap;
+  text-decoration:none;
+}
 .teamHubTeamSelect {
   min-width:190px;
   border:1px solid var(--line);
