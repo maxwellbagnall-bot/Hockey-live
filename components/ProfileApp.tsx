@@ -20,6 +20,11 @@ export default function ProfileApp() {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [hasError, setHasError] = useState(false);
+  const [addTeamOpen, setAddTeamOpen] = useState(false);
+  const [newClubName, setNewClubName] = useState("");
+  const [newTeamName, setNewTeamName] = useState("");
+  const [addingTeam, setAddingTeam] = useState(false);
+  const [addTeamMessage, setAddTeamMessage] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -93,11 +98,104 @@ export default function ProfileApp() {
     );
   }, [search, teams]);
 
+  const possibleTeams = useMemo(() => {
+    const clubNeedle = newClubName.trim().toLowerCase();
+    const teamNeedle = newTeamName.trim().toLowerCase();
+
+    if (clubNeedle.length < 2 && teamNeedle.length < 2) return [];
+
+    const terms = `${clubNeedle} ${teamNeedle}`
+      .split(/\s+/)
+      .filter((term) => term.length > 1);
+
+    return teams
+      .map((team) => {
+        const haystack = `${team.club?.name ?? ""} ${team.name}`.toLowerCase();
+        const matches = terms.filter((term) => haystack.includes(term)).length;
+        return { team, matches };
+      })
+      .filter(({ matches }) => matches >= Math.max(1, Math.ceil(terms.length * 0.6)))
+      .sort((a, b) => b.matches - a.matches)
+      .slice(0, 4)
+      .map(({ team }) => team);
+  }, [newClubName, newTeamName, teams]);
+
   function toggleTeam(id: string) {
     setSelectedTeams((current) =>
       current.includes(id)
         ? current.filter((teamId) => teamId !== id)
         : [...current, id]
+    );
+  }
+
+  function chooseExistingTeam(team: Team) {
+    setSelectedTeams((current) =>
+      current.includes(team.id) ? current : [...current, team.id]
+    );
+    setAddTeamOpen(false);
+    setNewClubName("");
+    setNewTeamName("");
+    setAddTeamMessage("");
+    setMessage(`${team.name} selected — we’ll use the team already in Hockey Live.`);
+  }
+
+  async function addCommunityTeam(event: FormEvent) {
+    event.preventDefault();
+
+    const clubName = newClubName.trim();
+    const teamName = newTeamName.trim();
+
+    if (clubName.length < 2 || teamName.length < 2) {
+      setAddTeamMessage("Enter both the club and team name.");
+      return;
+    }
+
+    setAddingTeam(true);
+    setAddTeamMessage("");
+
+    const { data, error } = await supabase.rpc("community_add_team", {
+      p_club_name: clubName,
+      p_team_name: teamName
+    });
+
+    setAddingTeam(false);
+
+    if (error) {
+      setAddTeamMessage(error.message);
+      return;
+    }
+
+    const row = Array.isArray(data) ? data[0] : data;
+    if (!row?.team_id) {
+      setAddTeamMessage("We couldn’t add that team. Please try again.");
+      return;
+    }
+
+    const addedTeam: Team = {
+      id: row.team_id,
+      name: row.team_name,
+      age_group: null,
+      gender: null,
+      club: { name: row.club_name }
+    };
+
+    setTeams((current) => {
+      const exists = current.some((team) => team.id === addedTeam.id);
+      return exists
+        ? current
+        : [...current, addedTeam].sort((a, b) => a.name.localeCompare(b.name));
+    });
+    setSelectedTeams((current) =>
+      current.includes(addedTeam.id) ? current : [...current, addedTeam.id]
+    );
+    setAddTeamOpen(false);
+    setNewClubName("");
+    setNewTeamName("");
+    setSearch("");
+    setMessage(
+      row.already_existed
+        ? `${addedTeam.name} already existed — we’ve selected it for you.`
+        : `${addedTeam.name} added for the Hockey Live community and selected.`
     );
   }
 
@@ -154,11 +252,11 @@ export default function ProfileApp() {
 
       <section className="profileStage">
         <form className="profileCard" onSubmit={saveProfile}>
-          <p className="eyebrow">YOUR PROFILE</p>
-          <h1>Choose your hockey.</h1>
+          <p className="eyebrow">YOUR TEAMS</p>
+          <h1>Manage my teams.</h1>
           <p className="profileIntro">
-            Follow the teams you care about to bring their fixtures, results and
-            table to the top. Choosing a team is optional.
+            Add or remove the teams you follow. Your choices personalise Hockey Live,
+            and you can add a missing team for the whole community.
           </p>
 
           <label className="onboardingUsernameConfirm">
@@ -219,6 +317,77 @@ export default function ProfileApp() {
             )}
           </div>
 
+          <div className="communityAddTeam">
+            <button
+              type="button"
+              className="communityAddTeamButton"
+              onClick={() => {
+                setAddTeamOpen((open) => !open);
+                setAddTeamMessage("");
+              }}
+            >
+              Can’t see your team? Add it
+            </button>
+
+            {addTeamOpen && (
+              <div className="communityAddTeamForm">
+                <p className="communityAddHint">
+                  Add it once and it becomes the shared team everyone can use.
+                  We’ll show similar teams first to help avoid duplicates.
+                </p>
+
+                <label>
+                  Club
+                  <input
+                    value={newClubName}
+                    onChange={(event) => setNewClubName(event.target.value)}
+                    placeholder="e.g. Rugby & East Warwickshire"
+                    autoComplete="off"
+                  />
+                </label>
+
+                <label>
+                  Team
+                  <input
+                    value={newTeamName}
+                    onChange={(event) => setNewTeamName(event.target.value)}
+                    placeholder="e.g. Rugby 3"
+                    autoComplete="off"
+                  />
+                </label>
+
+                {possibleTeams.length > 0 && (
+                  <div className="possibleTeams">
+                    <span className="communityAddHint">Is it one of these?</span>
+                    {possibleTeams.map((team) => (
+                      <button
+                        type="button"
+                        key={team.id}
+                        onClick={() => chooseExistingTeam(team)}
+                      >
+                        <b>{team.name}</b>
+                        {team.club?.name ? ` • ${team.club.name}` : ""}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {addTeamMessage && (
+                  <div className="communityAddMessage">{addTeamMessage}</div>
+                )}
+
+                <button
+                  className="primaryButton"
+                  type="button"
+                  disabled={addingTeam}
+                  onClick={(event) => void addCommunityTeam(event as unknown as FormEvent)}
+                >
+                  {addingTeam ? "Adding team…" : "Add this team"}
+                </button>
+              </div>
+            )}
+          </div>
+
           {message && (
             <div className={hasError ? "onboardingMessage" : "profileSuccess"}>
               {message}
@@ -230,7 +399,7 @@ export default function ProfileApp() {
               className="primaryButton"
               disabled={busy || username.trim().length < 2}
             >
-              {busy ? "Saving…" : "Save profile"}
+              {busy ? "Saving…" : "Save my teams"}
             </button>
             <a className="secondaryButton" href="/create">
               Create a game
