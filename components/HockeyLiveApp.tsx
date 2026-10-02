@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "../lib/supabase";
 import ShareHockeyLive from "./ShareHockeyLive";
 import TeamHub from "./TeamHub";
+import HelpPopup from "./HelpPopup";
 
 type Side = "home" | "away" | null;
 type Confidence = "Community" | "Confirmed" | "Official";
@@ -831,6 +832,7 @@ export default function HockeyLiveApp() {
         </nav>
 
         <div className="topbarActions">
+          <HelpPopup />
           <a className="ghostButton" href="/create">Create game</a>
           <div className="accountChip">
             <a className="accountName" href="/profile">
@@ -1057,7 +1059,13 @@ export default function HockeyLiveApp() {
                   </button>
                   <span>Controller: @{myUsername || selected.controllerUsername}</span>
                   <button onClick={() => controlClock("next_period")}>
-                    {selected.period === "Q4" ? "FT" : "End Q"}
+                    {selected.periodFormat === "halves"
+                      ? selected.period === "H2"
+                        ? "FT"
+                        : "Half time"
+                      : selected.period === "Q4"
+                        ? "FT"
+                        : "End Q"}
                   </button>
                   <button onClick={() => setControllerControlsOpen(true)}>•••</button>
                 </>
@@ -1242,9 +1250,7 @@ export default function HockeyLiveApp() {
                     </button>
                   </div>
                   <small>
-                    {selected.periodFormat === "halves"
-                      ? "2 × 35 minutes"
-                      : "4 × 15 minutes"}
+                    Each new period starts at 0:00. End it when play actually stops.
                   </small>
                 </div>
 
