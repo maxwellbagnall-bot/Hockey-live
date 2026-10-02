@@ -108,11 +108,41 @@ export default function CreateMatchApp() {
     [teams, competitionId]
   );
 
+  const homeTeamOptions = useMemo(() => {
+    const uniqueTeams = new Map<string, TeamMembership>();
+    for (const team of teams) {
+      if (!uniqueTeams.has(team.id)) uniqueTeams.set(team.id, team);
+    }
+    return Array.from(uniqueTeams.values()).sort((a, b) =>
+      a.name.localeCompare(b.name)
+    );
+  }, [teams]);
+
   function changeCompetition(id: string) {
     setCompetitionId(id);
     const nextTeams = teams.filter((team) => team.competition_id === id);
     setHomeTeamId(nextTeams[0]?.id ?? "");
     setAwayTeamId(nextTeams[1]?.id ?? "");
+  }
+
+  function changeHomeTeam(id: string) {
+    const memberships = teams.filter((team) => team.id === id);
+    if (!memberships.length) return;
+
+    const membership =
+      memberships.find((team) => team.competition_id === competitionId) ??
+      memberships[0];
+    const nextTeams = teams.filter(
+      (team) => team.competition_id === membership.competition_id
+    );
+
+    setCompetitionId(membership.competition_id);
+    setHomeTeamId(id);
+    setAwayTeamId((current) =>
+      nextTeams.some((team) => team.id === current && team.id !== id)
+        ? current
+        : nextTeams.find((team) => team.id !== id)?.id ?? ""
+    );
   }
 
   function changeMode(nextMode: MatchMode) {
@@ -277,28 +307,14 @@ export default function CreateMatchApp() {
               <form className="createMatchForm" onSubmit={createMatch}>
                 {mode === "competition" ? (
                   <>
-                    <label>
-                      Competition
-                      <select
-                        value={competitionId}
-                        onChange={(e) => changeCompetition(e.target.value)}
-                      >
-                        {competitions.map((competition) => (
-                          <option key={competition.id} value={competition.id}>
-                            {competition.name} • {competition.season}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-
                     <div className="createTeamGrid">
                       <label>
-                        Home team
+                        Home team <span className="optionalText">sets league</span>
                         <select
                           value={homeTeamId}
-                          onChange={(e) => setHomeTeamId(e.target.value)}
+                          onChange={(e) => changeHomeTeam(e.target.value)}
                         >
-                          {availableTeams.map((team) => (
+                          {homeTeamOptions.map((team) => (
                             <option key={team.id} value={team.id}>
                               {team.name}
                             </option>
@@ -307,19 +323,33 @@ export default function CreateMatchApp() {
                       </label>
 
                       <label>
-                        Away team
+                        Competition
                         <select
-                          value={awayTeamId}
-                          onChange={(e) => setAwayTeamId(e.target.value)}
+                          value={competitionId}
+                          onChange={(e) => changeCompetition(e.target.value)}
                         >
-                          {availableTeams.map((team) => (
-                            <option key={team.id} value={team.id}>
-                              {team.name}
+                          {competitions.map((competition) => (
+                            <option key={competition.id} value={competition.id}>
+                              {competition.name} • {competition.season}
                             </option>
                           ))}
                         </select>
                       </label>
                     </div>
+
+                    <label>
+                      Away team
+                      <select
+                        value={awayTeamId}
+                        onChange={(e) => setAwayTeamId(e.target.value)}
+                      >
+                        {availableTeams.map((team) => (
+                          <option key={team.id} value={team.id}>
+                            {team.name}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
                   </>
                 ) : (
                   <>
