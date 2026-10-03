@@ -142,6 +142,7 @@ export default function HockeyLiveApp() {
   const [selectedId, setSelectedId] = useState("");
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
+  const [extraMatchActionsOpen, setExtraMatchActionsOpen] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
   const [matchFocusOpen, setMatchFocusOpen] = useState(false);
   const [controllerControlsOpen, setControllerControlsOpen] = useState(false);
@@ -1317,15 +1318,17 @@ export default function HockeyLiveApp() {
               </div>
             )}
 
-            {selected.status !== "finished" && (
-              <div className="matchQuickActions">
-                <div className="quickActionHeading">
+            {selected.                <div className="quickActionHeading">
                   <div>
-                    <p className="eyebrow">QUICK ACTIONS</p>
-                    <h3>What just happened?</h3>
+                    <p className="eyebrow">LOW-DISTRACTION UPDATES</p>
+                    <h3>Keep watching the game</h3>
                   </div>
                   <span>{minuteDraft}&apos;</span>
                 </div>
+
+                <p className="quickUpdatePrompt">
+                  Just tap for goals at a natural pause. You don&apos;t need to log every event.
+                </p>
 
                 <div className="quickGoalGrid">
                   <button
@@ -1345,44 +1348,61 @@ export default function HockeyLiveApp() {
                   </button>
                 </div>
 
-                <div className="quickSecondaryGrid">
-                  <button
-                    className="quickEventButton"
-                    onClick={() => setContributeOpen((value) => !value)}
-                  >
-                    {contributeOpen ? "Close event panel" : "Report card / corner / event"}
-                  </button>
+                <button
+                  className="quickOptionsToggle"
+                  onClick={() => {
+                    if (extraMatchActionsOpen) setContributeOpen(false);
+                    setExtraMatchActionsOpen((open) => !open);
+                  }}
+                  aria-expanded={extraMatchActionsOpen}
+                >
+                  {extraMatchActionsOpen ? "Hide extra options" : "More updates and comments"}
+                </button>
 
-                  <button
-                    className="quickShareButton"
-                    onClick={downloadShareGraphic}
-                  >
-                    Share score
-                  </button>
-                </div>
+                {extraMatchActionsOpen && (
+                  <div className="quickExtraActions">
+                    <div className="quickSecondaryGrid">
+                      <button
+                        className="quickEventButton"
+                        onClick={() => setContributeOpen((value) => !value)}
+                      >
+                        {contributeOpen ? "Close event panel" : "Report card / corner / event"}
+                      </button>
 
-                <div className="quickCommentBox">
-                  <input
-                    placeholder="Comment on the match…"
-                    value={comment}
-                    maxLength={500}
-                    onChange={(event) => setComment(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && comment.trim()) {
-                        void submitReport("comment", null, comment);
-                      }
-                    }}
-                  />
-                  <button
-                    disabled={!comment.trim()}
-                    onClick={() => submitReport("comment", null, comment)}
-                  >
-                    Comment
-                  </button>
-                </div>
+                      <button
+                        className="quickShareButton"
+                        onClick={downloadShareGraphic}
+                      >
+                        Share score
+                      </button>
+                    </div>
+
+                    <div className="quickCommentBox">
+                      <input
+                        placeholder="Comment on the match…"
+                        value={comment}
+                        maxLength={500}
+                        onChange={(event) => setComment(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && comment.trim()) {
+                            void submitReport("comment", null, comment);
+                          }
+                        }}
+                      />
+                      <button
+                        disabled={!comment.trim()}
+                        onClick={() => submitReport("comment", null, comment)}
+                      >
+                        Comment
+                      </button>
+                    </div>
+                  </div>
+                )}
 
                 <small className="quickActionNote">
                   Goal reports update the score and timeline together.
+                </small>
+oal reports update the score and timeline together.
                 </small>
               </div>
             )}
