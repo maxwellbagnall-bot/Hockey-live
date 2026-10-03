@@ -1404,8 +1404,6 @@ export default function HockeyLiveApp() {
                 <small className="quickActionNote">
                   Goal reports update the score and timeline together.
                 </small>
-oal reports update the score and timeline together.
-                </small>
               </div>
             )}
 
