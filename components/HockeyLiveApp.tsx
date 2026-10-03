@@ -1318,7 +1318,9 @@ export default function HockeyLiveApp() {
               </div>
             )}
 
-            {selected.                <div className="quickActionHeading">
+            {selected.status !== "finished" && (
+              <div className="matchQuickActions">
+                <div className="quickActionHeading">
                   <div>
                     <p className="eyebrow">LOW-DISTRACTION UPDATES</p>
                     <h3>Keep watching the game</h3>
