@@ -3464,3 +3464,33 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   background: #18e28b;
   box-shadow: 0 0 0 3px rgba(24, 226, 139, 0.12);
 }
+
+.quickUpdatePrompt {
+  margin: 8px 0 12px;
+  color: #a8bac9;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.45;
+}
+
+.quickOptionsToggle {
+  width: 100%;
+  margin-top: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 11px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #c8d5df;
+  padding: 11px 13px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.quickOptionsToggle:hover {
+  border-color: rgba(24, 226, 139, 0.35);
+  color: #ffffff;
+}
+
+.quickExtraActions {
+  margin-top: 10px;
+}
