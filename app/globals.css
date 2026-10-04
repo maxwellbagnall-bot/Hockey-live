@@ -539,7 +539,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .welcomeScoreCard { max-width:560px; }
 }
 @media (max-width:560px) {
-  .onboardingHeader { padding:16px; }
+  .onboardingHeader { padding:calc(env(safe-area-inset-top) + 16px) 16px 16px; }
   .onboardingWelcome {
     padding:34px 20px 60px;
   }
