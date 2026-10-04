@@ -1535,111 +1535,126 @@ export default function HockeyLiveApp() {
                   </button>
                 </div>
 
-                <div className="focusEventStrip" aria-label="Quick match events">
-                  <button
-                    className={`focusEventShortcut ${pendingQuickEvent === "short_corner" ? "selected" : ""}`}
-                    aria-label="Penalty corner"
-                    title="Penalty corner"
-                    onClick={() =>
-                      setPendingQuickEvent((current) =>
-                        current === "short_corner" ? null : "short_corner"
-                      )
-                    }
-                  >
-                    PC
-                  </button>
+                <button
+                  className="quickOptionsToggle"
+                  onClick={() => {
+                    if (extraMatchActionsOpen) setContributeOpen(false);
+                    setExtraMatchActionsOpen((open) => !open);
+                  }}
+                  aria-expanded={extraMatchActionsOpen}
+                >
+                  {extraMatchActionsOpen ? "Hide extra options" : "More updates and comments"}
+                </button>
 
-                  <button
-                    className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "green_card" ? "selected" : ""}`}
-                    aria-label="Green card"
-                    title="Green card"
-                    onClick={() =>
-                      setPendingQuickEvent((current) =>
-                        current === "green_card" ? null : "green_card"
-                      )
-                    }
-                  >
-                    <span className="miniCard green" />
-                  </button>
+                {extraMatchActionsOpen && (
+                  <div className="quickExtraActions">
+                    <div className="focusEventStrip" aria-label="Quick match events">
+                      <button
+                        className={`focusEventShortcut ${pendingQuickEvent === "short_corner" ? "selected" : ""}`}
+                        aria-label="Penalty corner"
+                        title="Penalty corner"
+                        onClick={() =>
+                          setPendingQuickEvent((current) =>
+                            current === "short_corner" ? null : "short_corner"
+                          )
+                        }
+                      >
+                        PC
+                      </button>
 
-                  <button
-                    className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "yellow_card" ? "selected" : ""}`}
-                    aria-label="Yellow card"
-                    title="Yellow card"
-                    onClick={() =>
-                      setPendingQuickEvent((current) =>
-                        current === "yellow_card" ? null : "yellow_card"
-                      )
-                    }
-                  >
-                    <span className="miniCard yellow" />
-                  </button>
+                      <button
+                        className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "green_card" ? "selected" : ""}`}
+                        aria-label="Green card"
+                        title="Green card"
+                        onClick={() =>
+                          setPendingQuickEvent((current) =>
+                            current === "green_card" ? null : "green_card"
+                          )
+                        }
+                      >
+                        <span className="miniCard green" />
+                      </button>
 
-                  <button
-                    className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "red_card" ? "selected" : ""}`}
-                    aria-label="Red card"
-                    title="Red card"
-                    onClick={() =>
-                      setPendingQuickEvent((current) =>
-                        current === "red_card" ? null : "red_card"
-                      )
-                    }
-                  >
-                    <span className="miniCard red" />
-                  </button>
-                </div>
+                      <button
+                        className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "yellow_card" ? "selected" : ""}`}
+                        aria-label="Yellow card"
+                        title="Yellow card"
+                        onClick={() =>
+                          setPendingQuickEvent((current) =>
+                            current === "yellow_card" ? null : "yellow_card"
+                          )
+                        }
+                      >
+                        <span className="miniCard yellow" />
+                      </button>
 
-                {pendingQuickEvent && (
-                  <div className="focusTeamChooser">
-                    <span>
-                      {pendingQuickEvent === "short_corner"
-                        ? "PC for:"
-                        : pendingQuickEvent === "green_card"
-                          ? "Green card:"
-                          : pendingQuickEvent === "yellow_card"
-                            ? "Yellow card:"
-                            : "Red card:"}
-                    </span>
-                    <button
-                      onClick={() => {
-                        const event = pendingQuickEvent;
-                        setPendingQuickEvent(null);
-                        void submitReport(event, "home");
-                      }}
-                    >
-                      {selected.home}
-                    </button>
-                    <button
-                      onClick={() => {
-                        const event = pendingQuickEvent;
-                        setPendingQuickEvent(null);
-                        void submitReport(event, "away");
-                      }}
-                    >
-                      {selected.away}
-                    </button>
+                      <button
+                        className={`focusEventShortcut cardShortcut ${pendingQuickEvent === "red_card" ? "selected" : ""}`}
+                        aria-label="Red card"
+                        title="Red card"
+                        onClick={() =>
+                          setPendingQuickEvent((current) =>
+                            current === "red_card" ? null : "red_card"
+                          )
+                        }
+                      >
+                        <span className="miniCard red" />
+                      </button>
+                    </div>
+
+                    {pendingQuickEvent && (
+                      <div className="focusTeamChooser">
+                        <span>
+                          {pendingQuickEvent === "short_corner"
+                            ? "PC for:"
+                            : pendingQuickEvent === "green_card"
+                              ? "Green card:"
+                              : pendingQuickEvent === "yellow_card"
+                                ? "Yellow card:"
+                                : "Red card:"}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const event = pendingQuickEvent;
+                            setPendingQuickEvent(null);
+                            void submitReport(event, "home");
+                          }}
+                        >
+                          {selected.home}
+                        </button>
+                        <button
+                          onClick={() => {
+                            const event = pendingQuickEvent;
+                            setPendingQuickEvent(null);
+                            void submitReport(event, "away");
+                          }}
+                        >
+                          {selected.away}
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="focusCommentBox">
+                      <input
+                        placeholder="Comment…"
+                        value={comment}
+                        maxLength={500}
+                        onChange={(event) => setComment(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" && comment.trim()) {
+                            void submitReport("comment", null, comment);
+                          }
+                        }}
+                      />
+                      <button
+                        disabled={!comment.trim()}
+                        onClick={() => submitReport("comment", null, comment)}
+                      >
+                        Send
+                      </button>
+                    </div>
                   </div>
                 )}
-
-                <div className="focusCommentBox">
-                  <input
-                    placeholder="Comment…"
-                    value={comment}
-                    maxLength={500}
-                    onChange={(event) => setComment(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" && comment.trim()) {
-                        void submitReport("comment", null, comment);
-                      }
-                    }}
-                  />
-                  <button
-                    disabled={!comment.trim()}
-                    onClick={() => submitReport("comment", null, comment)}
-                  >
-                    Send
-                  </button>
-                </div>
               </>
             ) : (
               <button className="focusShareButton" onClick={downloadShareGraphic}>
