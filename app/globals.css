@@ -3499,6 +3499,65 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
 }
 
 
+
+/* First-use Match Centre guide */
+.matchCentreGuide {
+  margin: 8px 0 10px;
+}
+.matchCentreGuideToggle {
+  width: 100%;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+  background: rgba(255,255,255,.035);
+  color: #c8d5df;
+  padding: 9px 11px;
+  text-align: left;
+  font-size: 11px;
+  font-weight: 850;
+  cursor: pointer;
+}
+.matchCentreGuideToggle:hover {
+  border-color: rgba(24,226,139,.35);
+  color: #fff;
+}
+.matchCentreGuideBody {
+  max-height: min(24vh, 190px);
+  overflow: auto;
+  margin-top: 7px;
+  padding: 10px 11px;
+  border: 1px solid rgba(24,226,139,.18);
+  border-radius: 10px;
+  background: rgba(24,226,139,.045);
+  color: #b9cad5;
+  font-size: 11px;
+  line-height: 1.4;
+}
+.matchCentreGuideBody strong {
+  display: block;
+  color: #dffbed;
+  font-size: 12px;
+}
+.matchCentreGuideBody p {
+  margin: 6px 0 0;
+}
+@media (max-width:720px) {
+  .matchFocusOpen .matchQuickActions .matchCentreGuide {
+    display: none;
+  }
+  .matchFocusOpen .matchFocusActions .matchCentreGuide {
+    margin: 0 0 7px;
+  }
+  .matchFocusOpen .matchFocusActions .matchCentreGuideBody {
+    max-height: 20vh;
+    margin-top: 5px;
+    padding: 8px 9px;
+    font-size: 10px;
+  }
+  .matchFocusOpen .matchFocusActions .matchCentreGuideBody strong {
+    font-size: 11px;
+  }
+}
+
 /* Larger match clock controls for touch screens */
 @media (max-width:720px) {
   .matchFocusOpen .controllerOverlay .controllerClockActions button {

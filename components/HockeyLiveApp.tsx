@@ -143,6 +143,7 @@ export default function HockeyLiveApp() {
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
   const [extraMatchActionsOpen, setExtraMatchActionsOpen] = useState(false);
+  const [matchGuideOpen, setMatchGuideOpen] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
   const [matchFocusOpen, setMatchFocusOpen] = useState(false);
   const [controllerControlsOpen, setControllerControlsOpen] = useState(false);
@@ -475,6 +476,12 @@ export default function HockeyLiveApp() {
     ]);
     announce("Goal disallowed — score corrected");
   }
+
+  useEffect(() => {
+    const hasSeenGuide =
+      window.localStorage.getItem("hockey_live_match_centre_guide_seen") === "true";
+    setMatchGuideOpen(!hasSeenGuide);
+  }, []);
 
   useEffect(() => {
     void loadMyProfile();
@@ -1320,6 +1327,40 @@ export default function HockeyLiveApp() {
 
             {selected.status !== "finished" && (
               <div className="matchQuickActions">
+              <div className="matchCentreGuide">
+                <button
+                  type="button"
+                  className="matchCentreGuideToggle"
+                  aria-expanded={matchGuideOpen}
+                  aria-controls="match-centre-quick-guide"
+                  onClick={() => {
+                    const nextOpen = !matchGuideOpen;
+                    setMatchGuideOpen(nextOpen);
+                    if (!nextOpen) {
+                      window.localStorage.setItem(
+                        "hockey_live_match_centre_guide_seen",
+                        "true"
+                      );
+                    }
+                  }}
+                >
+                  {matchGuideOpen ? "Quick guide · Hide" : "Quick guide"}
+                </button>
+                {matchGuideOpen && (
+                  <div className="matchCentreGuideBody" id="match-centre-quick-guide">
+                    <strong>Start simple: run the clock and add goals.</strong>
+                    <p>
+                      If you’re Match Controller, start and pause the clock as play
+                      begins and stops. Tap a team’s Goal button when they score.
+                    </p>
+                    <p>
+                      When you’re ready, open More updates for cards and penalty corners.
+                      Add a comment if you want to describe a highlight. The clock and
+                      goals are enough to keep everyone following.
+                    </p>
+                  </div>
+                )}
+              </div>
                 <div className="quickActionHeading">
                   <div>
                     <p className="eyebrow">LOW-DISTRACTION UPDATES</p>
@@ -1515,6 +1556,40 @@ export default function HockeyLiveApp() {
           )}
 
           <div className="matchFocusActions">
+            <div className="matchCentreGuide">
+              <button
+                type="button"
+                className="matchCentreGuideToggle"
+                aria-expanded={matchGuideOpen}
+                aria-controls="match-centre-focus-guide"
+                onClick={() => {
+                  const nextOpen = !matchGuideOpen;
+                  setMatchGuideOpen(nextOpen);
+                  if (!nextOpen) {
+                    window.localStorage.setItem(
+                      "hockey_live_match_centre_guide_seen",
+                      "true"
+                    );
+                  }
+                }}
+              >
+                {matchGuideOpen ? "Quick guide · Hide" : "Quick guide"}
+              </button>
+              {matchGuideOpen && (
+                <div className="matchCentreGuideBody" id="match-centre-focus-guide">
+                  <strong>Start simple: run the clock and add goals.</strong>
+                  <p>
+                    If you’re Match Controller, start and pause the clock as play
+                    begins and stops. Tap a team’s Goal button when they score.
+                  </p>
+                  <p>
+                    When you’re ready, open More updates for cards and penalty corners.
+                    Add a comment if you want to describe a highlight. The clock and
+                    goals are enough to keep everyone following.
+                  </p>
+                </div>
+              )}
+            </div>
             {selected.status !== "finished" ? (
               <>
                 <div className="focusActionButtons focusGoalButtons">
