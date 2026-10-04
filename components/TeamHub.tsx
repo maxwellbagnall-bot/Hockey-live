@@ -39,6 +39,31 @@ type TableRow = {
 
 type Tab = "overview" | "fixtures" | "results" | "table";
 
+function effectiveMatchStatus(
+  status: TeamMatch["status"],
+  startsAt: string,
+  controllerProfileId: string | null,
+  controllerLastSeenAt: string | null,
+  nowMs = Date.now()
+): TeamMatch["status"] {
+  if (status !== "live") return status;
+
+  const startedAtMs = new Date(startsAt).getTime();
+  if (!Number.isFinite(startedAtMs)) return status;
+
+  const controllerSeenAtMs = controllerLastSeenAt
+    ? new Date(controllerLastSeenAt).getTime()
+    : Number.NaN;
+  const controllerIsActive =
+    Boolean(controllerProfileId) &&
+    Number.isFinite(controllerSeenAtMs) &&
+    nowMs - controllerSeenAtMs <= 120000;
+
+  return nowMs - startedAtMs >= 8 * 60 * 60 * 1000 && !controllerIsActive
+    ? "finished"
+    : status;
+}
+
 function isToday(value: string, now = new Date()) {
   const date = new Date(value);
   return date.getFullYear() === now.getFullYear() &&
@@ -131,7 +156,7 @@ export default function TeamHub({
         supabase
           .from("matches")
           .select(
-            "id,home_team_id,away_team_id,home_score,away_score,status,starts_at,is_demo,cancelled_at,home_team:teams!matches_home_team_id_fkey(name),away_team:teams!matches_away_team_id_fkey(name)"
+            "id,home_team_id,away_team_id,home_score,away_score,status,starts_at,is_demo,cancelled_at,controller_profile_id,controller_last_seen_at,home_team:teams!matches_home_team_id_fkey(name),away_team:teams!matches_away_team_id_fkey(name)"
           )
           .eq("competition_id", selectedTeam.competitionId)
           .eq("is_demo", false)
@@ -154,7 +179,12 @@ export default function TeamHub({
           away: row.away_team?.name ?? "Away",
           homeScore: row.home_score ?? 0,
           awayScore: row.away_score ?? 0,
-          status: row.status,
+          status: effectiveMatchStatus(
+            row.status,
+            row.starts_at,
+            row.controller_profile_id ?? null,
+            row.controller_last_seen_at ?? null
+          ),
           startsAt: row.starts_at
         }))
       );
