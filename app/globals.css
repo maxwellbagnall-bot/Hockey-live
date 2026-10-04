@@ -1396,14 +1396,20 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .matchFocusOpen .matchFocusClose {
     display:block;
     position:absolute;
-    top:max(10px,env(safe-area-inset-top));
+    top:calc(env(safe-area-inset-top) + 14px);
     left:12px;
     z-index:230;
-    border:0;
-    background:transparent;
-    color:#c9d6e1;
-    padding:8px 4px;
+    min-width:96px;
+    min-height:48px;
+    border:1px solid var(--line);
+    border-radius:12px;
+    background:#10263a;
+    color:#f7fbff;
+    padding:12px 14px;
+    font-size:15px;
+    line-height:20px;
     font-weight:900;
+    text-align:left;
     cursor:pointer;
   }
 
@@ -1415,7 +1421,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     right:0;
     z-index:220;
     padding:
-      calc(max(10px,env(safe-area-inset-top)) + 42px)
+      calc(env(safe-area-inset-top) + 64px)
       12px
       9px;
     background:linear-gradient(180deg,#0b1c2c,#07131f);
