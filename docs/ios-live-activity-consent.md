@@ -1,5 +1,9 @@
 # iOS Live Activity: game-scoped opt-in
 
+## Delivery timing
+
+This is a post-launch enhancement. It must not delay the web app launch. Revisit the native iOS work after the web app is launched and its initial match-day tests are complete.
+
 ## Goal
 
 Let a person follow one hockey match on the iPhone Lock Screen, and let an authorized controller use quick match actions there. The Live Activity must be started by an explicit choice for that match and must end when that match ends.
