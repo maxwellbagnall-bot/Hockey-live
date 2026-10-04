@@ -39,6 +39,13 @@ type TableRow = {
 
 type Tab = "overview" | "fixtures" | "results" | "table";
 
+function isToday(value: string, now = new Date()) {
+  const date = new Date(value);
+  return date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate();
+}
+
 function shortDate(value: string) {
   return new Intl.DateTimeFormat("en-GB", {
     weekday: "short",
@@ -176,6 +183,7 @@ export default function TeamHub({
     [matches]
   );
 
+  const todayMatches = matches.filter((match) => isToday(match.startsAt));
   const nextMatch = upcoming.find((match) => match.status === "live") ?? upcoming[0];
   const latestResult = results[0];
   const teamTableRow = table.find((row) => row.team_id === selectedTeamId);
@@ -312,8 +320,14 @@ export default function TeamHub({
       {tab === "overview" && (
         <div className="teamOverviewGrid">
           <div className="teamOverviewCard">
-            <span>Next match</span>
-            {nextMatch ? (
+            <span>{todayMatches.length ? "Today’s matches" : "Next match"}</span>
+            {todayMatches.length ? (
+              <div className="teamHubMatchList">
+                {todayMatches.map((match) =>
+                  renderMatch(match, match.status === "finished")
+                )}
+              </div>
+            ) : nextMatch ? (
               renderMatch(nextMatch)
             ) : (
               <p>No upcoming fixture yet.</p>
