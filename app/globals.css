@@ -1493,13 +1493,16 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   }
 
   .focusControllerRow button {
+    min-width:64px;
+    min-height:48px;
     border:1px solid var(--line);
-    border-radius:8px;
+    border-radius:9px;
     background:#173149;
     color:white;
-    padding:6px 8px;
-    font-size:10px;
+    padding:10px 12px;
+    font-size:13px;
     font-weight:900;
+    white-space:nowrap;
     cursor:pointer;
   }
 
@@ -3493,4 +3496,14 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
 
 .quickExtraActions {
   margin-top: 10px;
+}
+
+
+/* Larger match clock controls for touch screens */
+@media (max-width:720px) {
+  .matchFocusOpen .controllerOverlay .controllerClockActions button {
+    min-height:50px;
+    padding:14px 16px;
+    font-size:14px;
+  }
 }
