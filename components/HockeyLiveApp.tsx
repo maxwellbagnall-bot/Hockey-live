@@ -91,6 +91,34 @@ function controllerIsStale(match: Match, nowMs: number) {
   return nowMs - new Date(match.controllerLastSeenAt).getTime() > 120000;
 }
 
+const ABANDONED_LIVE_MATCH_TIMEOUT_MS = 8 * 60 * 60 * 1000;
+
+function effectiveMatchStatus(
+  status: Match["status"],
+  startsAt: string | null,
+  controllerProfileId: string | null,
+  controllerLastSeenAt: string | null,
+  nowMs = Date.now()
+): Match["status"] {
+  if (status !== "live" || !startsAt) return status;
+
+  const startedAtMs = new Date(startsAt).getTime();
+  if (!Number.isFinite(startedAtMs)) return status;
+
+  const controllerSeenAtMs = controllerLastSeenAt
+    ? new Date(controllerLastSeenAt).getTime()
+    : Number.NaN;
+  const controllerIsActive =
+    Boolean(controllerProfileId) &&
+    Number.isFinite(controllerSeenAtMs) &&
+    nowMs - controllerSeenAtMs <= 120000;
+
+  return nowMs - startedAtMs >= ABANDONED_LIVE_MATCH_TIMEOUT_MS &&
+    !controllerIsActive
+    ? "finished"
+    : status;
+}
+
 function sharedClockSeconds(match: Match, nowMs: number) {
   let seconds = match.clockSeconds ?? 0;
 
@@ -306,7 +334,12 @@ export default function HockeyLiveApp() {
       period: row.period ?? "Q1",
       minute: row.minute ?? 0,
       trust: prettyTrust(row.verification),
-      status: row.status,
+      status: effectiveMatchStatus(
+        row.status,
+        row.starts_at ?? null,
+        row.controller_profile_id ?? null,
+        row.controller_last_seen_at ?? null
+      ),
       competition: row.competition ?? "Hockey match",
       controllerProfileId: row.controller_profile_id ?? null,
       controllerUsername: row.controller_username ?? null,
@@ -946,7 +979,7 @@ export default function HockeyLiveApp() {
                     <span>
                       {match.status === "scheduled"
                         ? formatFixtureTime(match.startsAt)
-                        : match.period === "FT"
+                        : match.status === "finished" || match.period === "FT"
                           ? "Finished"
                           : `${match.period} • ${formatClock(clock)}`}
                     </span>
@@ -1056,7 +1089,7 @@ export default function HockeyLiveApp() {
                 <span className="pulseDot" />
                 {selected.status === "scheduled"
                   ? "SCHEDULED"
-                  : selected.period === "FT"
+                  : selected.status === "finished" || selected.period === "FT"
                     ? "FULL TIME"
                     : "LIVE"}
               </span>
