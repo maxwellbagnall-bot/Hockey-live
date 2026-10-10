@@ -814,7 +814,6 @@ export default function HockeyLiveApp() {
       setIsSubmittingComment(false);
       announce("Comment posted");
       void loadEvents(selected.id);
-      void loadEventPermissions(selected.id);
       return;
     }
 
@@ -1491,7 +1490,7 @@ d" || count >= 2) {
                         value={comment}
                         maxLength={500}
                         disabled={isSubmittingComment}
-                  onChange={(event) => setComment(event.target.value)}
+                        onChange={(event) => setComment(event.target.value)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" && comment.trim() && !isSubmittingComment) {
                             void submitReport("comment", null, comment);
@@ -1782,7 +1781,7 @@ d" || count >= 2) {
                         value={comment}
                         maxLength={500}
                         disabled={isSubmittingComment}
-                  onChange={(event) => setComment(event.target.value)}
+                        onChange={(event) => setComment(event.target.value)}
                         onKeyDown={(event) => {
                           if (event.key === "Enter" && comment.trim() && !isSubmittingComment) {
                             void submitReport("comment", null, comment);
