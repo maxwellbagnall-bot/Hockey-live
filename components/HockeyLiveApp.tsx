@@ -746,7 +746,14 @@ export default function HockeyLiveApp() {
       announce(finalPeriod ? "Match finished" : "Period advanced");
     } else if (action === "pause") {
       announce("Shared clock paused");
-    } else if (acti  async function submitReport(kind: EventKind, side: Side, text?: string) {
+    } else if (action === "set") {
+      announce("Shared clock corrected");
+    } else {
+      announce("Shared clock running");
+    }
+  }
+
+  async function submitReport(kind: EventKind, side: Side, text?: string) {
     if (!selected) return;
 
     const isComment = kind === "comment";
@@ -828,13 +835,6 @@ export default function HockeyLiveApp() {
     const confidence = returned?.confidence ?? "community";
 
     if (confidence === "confirmed" || count >= 2) {
-      announce("Report Confirmed");
-    } else {
-      announce("Community report added");
-    }
-  }
-
-d" || count >= 2) {
       announce("Report Confirmed");
     } else {
       announce("Community report added");
