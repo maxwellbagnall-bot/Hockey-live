@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "../lib/supabase";
 import ShareHockeyLive from "./ShareHockeyLive";
 import TeamHub from "./TeamHub";
@@ -170,6 +170,8 @@ export default function HockeyLiveApp() {
   const [selectedId, setSelectedId] = useState("");
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const commentInFlight = useRef(false);
   const [extraMatchActionsOpen, setExtraMatchActionsOpen] = useState(false);
   const [matchGuideOpen, setMatchGuideOpen] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
@@ -744,15 +746,15 @@ export default function HockeyLiveApp() {
       announce(finalPeriod ? "Match finished" : "Period advanced");
     } else if (action === "pause") {
       announce("Shared clock paused");
-    } else if (action === "set") {
-      announce("Shared clock corrected");
-    } else {
-      announce("Shared clock running");
-    }
-  }
-
-  async function submitReport(kind: EventKind, side: Side, text?: string) {
+    } else if (acti  async function submitReport(kind: EventKind, side: Side, text?: string) {
     if (!selected) return;
+
+    const isComment = kind === "comment";
+    if (isComment) {
+      if (commentInFlight.current) return;
+      commentInFlight.current = true;
+      setIsSubmittingComment(true);
+    }
 
     const teamId =
       side === "home"
@@ -773,23 +775,48 @@ export default function HockeyLiveApp() {
       note = `${EVENT_META[kind].label} reported: ${teamName}`;
     }
 
-    const { data, error } = await supabase.rpc("submit_match_report", {
-      p_access_token: null,
-      p_match_id: selected.id,
-      p_event_type: kind,
-      p_team_id: teamId,
-      p_minute: minuteDraft,
-      p_note: note,
-      p_pin: null
-    });
+    let response;
+    try {
+      response = await supabase.rpc("submit_match_report", {
+        p_access_token: null,
+        p_match_id: selected.id,
+        p_event_type: kind,
+        p_team_id: teamId,
+        p_minute: minuteDraft,
+        p_note: note,
+        p_pin: null
+      });
+    } catch (error) {
+      if (isComment) {
+        commentInFlight.current = false;
+        setIsSubmittingComment(false);
+      }
+      announce(error instanceof Error ? error.message : "Couldn’t post comment. Please try again.");
+      return;
+    }
+
+    const { data, error } = response;
 
     if (error) {
+      if (isComment) {
+        commentInFlight.current = false;
+        setIsSubmittingComment(false);
+      }
       announce(error.message);
       return;
     }
 
     setComment("");
     setMinuteEdited(false);
+
+    if (isComment) {
+      commentInFlight.current = false;
+      setIsSubmittingComment(false);
+      announce("Comment posted");
+      void loadEvents(selected.id);
+      void loadEventPermissions(selected.id);
+      return;
+    }
 
     await Promise.all([
       loadMatches(),
@@ -801,9 +828,14 @@ export default function HockeyLiveApp() {
     const count = returned?.report_count ?? 1;
     const confidence = returned?.confidence ?? "community";
 
-    if (kind === "comment") {
-      announce("Comment added");
-    } else if (confidence === "confirmed" || count >= 2) {
+    if (confidence === "confirmed" || count >= 2) {
+      announce("Report Confirmed");
+    } else {
+      announce("Community report added");
+    }
+  }
+
+d" || count >= 2) {
       announce("Report Confirmed");
     } else {
       announce("Community report added");
@@ -1458,18 +1490,19 @@ export default function HockeyLiveApp() {
                         placeholder="Comment on the match…"
                         value={comment}
                         maxLength={500}
-                        onChange={(event) => setComment(event.target.value)}
+                        disabled={isSubmittingComment}
+                  onChange={(event) => setComment(event.target.value)}
                         onKeyDown={(event) => {
-                          if (event.key === "Enter" && comment.trim()) {
+                          if (event.key === "Enter" && comment.trim() && !isSubmittingComment) {
                             void submitReport("comment", null, comment);
                           }
                         }}
                       />
                       <button
-                        disabled={!comment.trim()}
+                        disabled={!comment.trim() || isSubmittingComment}
                         onClick={() => submitReport("comment", null, comment)}
                       >
-                        Comment
+                        {isSubmittingComment ? "Posting…" : "Comment"}
                       </button>
                     </div>
                   </div>
@@ -1571,18 +1604,19 @@ export default function HockeyLiveApp() {
                   placeholder="Comment on the match…"
                   value={comment}
                   maxLength={500}
+                  disabled={isSubmittingComment}
                   onChange={(event) => setComment(event.target.value)}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" && comment.trim()) {
+                    if (event.key === "Enter" && comment.trim() && !isSubmittingComment) {
                       void submitReport("comment", null, comment);
                     }
                   }}
                 />
                 <button
-                  disabled={!comment.trim()}
+                  disabled={!comment.trim() || isSubmittingComment}
                   onClick={() => submitReport("comment", null, comment)}
                 >
-                  Post
+                  {isSubmittingComment ? "Posting…" : "Post"}
                 </button>
               </div>
             </div>
@@ -1747,18 +1781,19 @@ export default function HockeyLiveApp() {
                         placeholder="Comment…"
                         value={comment}
                         maxLength={500}
-                        onChange={(event) => setComment(event.target.value)}
+                        disabled={isSubmittingComment}
+                  onChange={(event) => setComment(event.target.value)}
                         onKeyDown={(event) => {
-                          if (event.key === "Enter" && comment.trim()) {
+                          if (event.key === "Enter" && comment.trim() && !isSubmittingComment) {
                             void submitReport("comment", null, comment);
                           }
                         }}
                       />
                       <button
-                        disabled={!comment.trim()}
+                        disabled={!comment.trim() || isSubmittingComment}
                         onClick={() => submitReport("comment", null, comment)}
                       >
-                        Send
+                        {isSubmittingComment ? "Posting…" : "Send"}
                       </button>
                     </div>
                   </div>
