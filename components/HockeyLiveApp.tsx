@@ -22,6 +22,7 @@ type MatchEvent = {
   kind: EventKind;
   side: Side;
   minute: number;
+  createdAt: string;
   text: string;
   confidence: Confidence;
   reportCount: number;
@@ -172,6 +173,7 @@ export default function HockeyLiveApp() {
   const [comment, setComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   const commentInFlight = useRef(false);
+  const eventLoadSequence = useRef(0);
   const [extraMatchActionsOpen, setExtraMatchActionsOpen] = useState(false);
   const [matchGuideOpen, setMatchGuideOpen] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
@@ -384,6 +386,7 @@ export default function HockeyLiveApp() {
   async function loadEvents(matchId: string) {
     if (!matchId) return;
 
+    const requestId = ++eventLoadSequence.current;
     const { data, error } = await supabase
       .from("match_events")
       .select(
@@ -393,6 +396,8 @@ export default function HockeyLiveApp() {
       .eq("is_void", false)
       .order("minute", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
+
+    if (requestId !== eventLoadSequence.current) return;
 
     if (error) {
       setBackendError(error.message);
@@ -411,6 +416,7 @@ export default function HockeyLiveApp() {
             ? "away"
             : null,
       minute: row.minute ?? match?.minute ?? 0,
+      createdAt: row.created_at ?? new Date().toISOString(),
       text:
         row.note ??
         `${EVENT_META[row.event_type as EventKind]?.label ?? "Update"} reported`,
@@ -817,6 +823,31 @@ export default function HockeyLiveApp() {
     setMinuteEdited(false);
 
     if (isComment) {
+      const returned = Array.isArray(data) ? data[0] : data;
+      if (returned?.id) {
+        const commentEvent: MatchEvent = {
+          id: returned.id,
+          kind: returned.event_type as EventKind,
+          side:
+            returned.team_id && returned.team_id === selected.homeTeamId
+              ? "home"
+              : returned.team_id && returned.team_id === selected.awayTeamId
+                ? "away"
+                : null,
+          minute: returned.minute ?? minuteDraft,
+          createdAt: returned.created_at ?? new Date().toISOString(),
+          text: returned.note ?? "Comment",
+          confidence: prettyTrust(returned.confidence),
+          reportCount: returned.report_count ?? 1,
+          isLate: Boolean(returned.is_late),
+          isDisallowed: Boolean(returned.is_disallowed)
+        };
+        setEvents((current) =>
+          [commentEvent, ...current.filter((event) => event.id !== commentEvent.id)]
+            .sort((a, b) => b.minute - a.minute || b.createdAt.localeCompare(a.createdAt))
+        );
+      }
+
       commentInFlight.current = false;
       setIsSubmittingComment(false);
       announce("Comment posted");
