@@ -239,6 +239,11 @@ export default function HockeyLiveApp() {
     [matches]
   );
 
+  const liveMatches = useMemo(
+    () => realMatches.filter((match) => match.status === "live"),
+    [realMatches]
+  );
+
   const myTeamMatches = useMemo(
     () =>
       realMatches.filter(
@@ -1005,17 +1010,18 @@ export default function HockeyLiveApp() {
         </div>
 
         <div className="heroPanel">
-          <span className="pulseDot" />
+          {liveMatches.length > 0 && <span className="pulseDot" />}
           <strong>LIVE NOW</strong>
           <p>
-            {realMatches.filter((match) => match.status === "live").length} matches
-            reporting live
+            {liveMatches.length === 0
+              ? "No matches reporting live right now"
+              : `${liveMatches.length} matches reporting live`}
           </p>
 
-          {selected && (
+          {liveMatches[0] && (
             <div className="miniScore">
-              <span>{selected.home}</span><b>{selected.homeScore}</b>
-              <span>{selected.away}</span><b>{selected.awayScore}</b>
+              <span>{liveMatches[0].home}</span><b>{liveMatches[0].homeScore}</b>
+              <span>{liveMatches[0].away}</span><b>{liveMatches[0].awayScore}</b>
             </div>
           )}
         </div>
