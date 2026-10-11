@@ -166,14 +166,106 @@ function matchSortValue(match: Match) {
   return 2_000_000_000_000_000 - start;
 }
 
+type SpeechResultLike = { 0: { transcript: string } };
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<SpeechResultLike>;
+};
+type SpeechRecognitionLike = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+type SpeechRecognitionConstructor = new () => SpeechRecognitionLike;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
+
 export default function HockeyLiveApp() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [events, setEvents] = useState<MatchEvent[]>([]);
   const [comment, setComment] = useState("");
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
+  const dictationRef = useRef<SpeechRecognitionLike | null>(null);
   const commentInFlight = useRef(false);
   const eventLoadSequence = useRef(0);
+
+  function toggleCommentDictation() {
+    if (dictationRef.current) {
+      dictationRef.current.stop();
+      dictationRef.current = null;
+      setIsDictating(false);
+      return;
+    }
+
+    const Recognition = window.SpeechRecognition ?? window.webkitSpeechRecognition;
+    if (!Recognition) {
+      window.alert(
+        "Voice dictation isn’t supported in this browser. Tap the comment box and use the microphone on your phone’s keyboard."
+      );
+      return;
+    }
+
+    const recognition = new Recognition();
+    const existingComment = comment.trimEnd();
+    recognition.lang = "en-GB";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0]?.transcript ?? "")
+        .join("")
+        .trim();
+      setComment(
+        [existingComment, transcript].filter(Boolean).join(existingComment && transcript ? " " : "")
+      );
+    };
+    recognition.onerror = () => {
+      dictationRef.current = null;
+      setIsDictating(false);
+    };
+    recognition.onend = () => {
+      dictationRef.current = null;
+      setIsDictating(false);
+    };
+    dictationRef.current = recognition;
+    setIsDictating(true);
+    try {
+      recognition.start();
+    } catch {
+      dictationRef.current = null;
+      setIsDictating(false);
+      window.alert("Couldn’t start voice input. Please try again.");
+    }
+  }
+
+  const dictationButton = (
+    <button
+      type="button"
+      className={`commentMicButton ${isDictating ? "isDictating" : ""}`}
+      aria-label={isDictating ? "Stop dictation" : "Dictate a comment"}
+      aria-pressed={isDictating}
+      title={isDictating ? "Stop dictation" : "Dictate a comment"}
+      disabled={isSubmittingComment}
+      onClick={toggleCommentDictation}
+    >
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="9" y="2.5" width="6" height="12" rx="3" />
+        <path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5M8.5 21.5h7" />
+      </svg>
+      <span>{isDictating ? "Listening" : "Dictate"}</span>
+    </button>
+  );
   const [extraMatchActionsOpen, setExtraMatchActionsOpen] = useState(false);
   const [matchGuideOpen, setMatchGuideOpen] = useState(false);
   const [contributeOpen, setContributeOpen] = useState(false);
@@ -1530,6 +1622,7 @@ export default function HockeyLiveApp() {
                     </div>
 
                     <div className="quickCommentBox">
+                      {dictationButton}
                       <input
                         placeholder="Comment on the match…"
                         value={comment}
@@ -1644,6 +1737,7 @@ export default function HockeyLiveApp() {
               </button>
 
               <div className="commentBox communityComment">
+                {dictationButton}
                 <input
                   placeholder="Comment on the match…"
                   value={comment}
@@ -1821,6 +1915,7 @@ export default function HockeyLiveApp() {
                     )}
 
                     <div className="focusCommentBox">
+                      {dictationButton}
                       <input
                         placeholder="Comment…"
                         value={comment}
