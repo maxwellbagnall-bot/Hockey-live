@@ -166,7 +166,7 @@ function matchSortValue(match: Match) {
   return 2_000_000_000_000_000 - start;
 }
 
-type SpeechResultLike = { 0: { transcript: string } };
+type SpeechResultLike = { 0: { transcript: string }; isFinal: boolean };
 type SpeechRecognitionEventLike = {
   results: ArrayLike<SpeechResultLike>;
 };
@@ -219,16 +219,19 @@ export default function HockeyLiveApp() {
     const recognition = new Recognition();
     const existingComment = comment.trimEnd();
     recognition.lang = "en-GB";
-    recognition.continuous = true;
-    recognition.interimResults = true;
+    recognition.continuous = false;
+    recognition.interimResults = false;
     recognition.onresult = (event) => {
       const transcript = Array.from(event.results)
+        .filter((result) => result.isFinal)
         .map((result) => result[0]?.transcript ?? "")
         .join("")
         .trim();
-      setComment(
-        [existingComment, transcript].filter(Boolean).join(existingComment && transcript ? " " : "")
-      );
+      if (transcript) {
+        setComment(
+          [existingComment, transcript].filter(Boolean).join(existingComment && transcript ? " " : "")
+        );
+      }
     };
     recognition.onerror = () => {
       dictationRef.current = null;
