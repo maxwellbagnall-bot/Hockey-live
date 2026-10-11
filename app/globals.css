@@ -3648,3 +3648,17 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     min-height: 58px;
   }
 }
+
+.quickCommentBox .commentMicButton,
+.commentBox .commentMicButton,
+.focusCommentBox .commentMicButton {
+  width: 68px;
+}
+
+@media (max-width: 620px) {
+  .quickCommentBox .commentMicButton,
+  .commentBox .commentMicButton,
+  .focusCommentBox .commentMicButton {
+    width: 60px;
+  }
+}
