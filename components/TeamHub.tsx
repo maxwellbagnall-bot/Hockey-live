@@ -136,7 +136,7 @@ export default function TeamHub({
         return;
       }
 
-      const { data: matchRows } = await supabase
+      const { data: matchRows } = await
         supabase
           .from("matches")
           .select(
