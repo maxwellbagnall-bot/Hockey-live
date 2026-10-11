@@ -136,8 +136,7 @@ export default function TeamHub({
         return;
       }
 
-      const { data: matchRows } = await
-        supabase
+      const { data: matchRows } = await supabase
           .from("matches")
           .select(
             "id,home_team_id,away_team_id,home_score,away_score,status,starts_at,is_demo,cancelled_at,controller_profile_id,controller_last_seen_at,home_team:teams!matches_home_team_id_fkey(name),away_team:teams!matches_away_team_id_fkey(name)"
@@ -148,8 +147,7 @@ export default function TeamHub({
           .or(
             `home_team_id.eq.${selectedTeam.id},away_team_id.eq.${selectedTeam.id}`
           )
-          .order("starts_at", { ascending: true }),
-;
+          .order("starts_at", { ascending: true });
 
       setMatches(
         (matchRows ?? []).map((row: any) => ({
