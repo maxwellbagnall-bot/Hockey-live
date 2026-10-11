@@ -23,21 +23,7 @@ type TeamMatch = {
   startsAt: string;
 };
 
-type TableRow = {
-  table_position: number;
-  team_id: string;
-  team_name: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goals_for: number;
-  goals_against: number;
-  goal_difference: number;
-  points: number;
-};
-
-type Tab = "overview" | "fixtures" | "results" | "table";
+type Tab = "overview" | "fixtures" | "results";
 
 function effectiveMatchStatus(
   status: TeamMatch["status"],
@@ -96,7 +82,6 @@ export default function TeamHub({
   const [teams, setTeams] = useState<TeamInfo[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState("");
   const [matches, setMatches] = useState<TeamMatch[]>([]);
-  const [table, setTable] = useState<TableRow[]>([]);
   const [tab, setTab] = useState<Tab>("overview");
   const [loading, setLoading] = useState(true);
 
@@ -148,11 +133,10 @@ export default function TeamHub({
     async function loadTeamData() {
       if (!selectedTeam) {
         setMatches([]);
-        setTable([]);
         return;
       }
 
-      const [{ data: matchRows }, { data: tableRows }] = await Promise.all([
+      const { data: matchRows } = await supabase
         supabase
           .from("matches")
           .select(
@@ -165,10 +149,7 @@ export default function TeamHub({
             `home_team_id.eq.${selectedTeam.id},away_team_id.eq.${selectedTeam.id}`
           )
           .order("starts_at", { ascending: true }),
-        supabase.rpc("get_competition_table", {
-          p_competition_id: selectedTeam.competitionId
-        })
-      ]);
+;
 
       setMatches(
         (matchRows ?? []).map((row: any) => ({
@@ -188,7 +169,6 @@ export default function TeamHub({
           startsAt: row.starts_at
         }))
       );
-      setTable((tableRows ?? []) as TableRow[]);
     }
 
     void loadTeamData();
@@ -216,12 +196,6 @@ export default function TeamHub({
   const todayMatches = matches.filter((match) => isToday(match.startsAt));
   const nextMatch = upcoming.find((match) => match.status === "live") ?? upcoming[0];
   const latestResult = results[0];
-  const teamTableRow = table.find((row) => row.team_id === selectedTeamId);
-  const competitionStarted = table.some((row) => row.played > 0);
-  const maxPlayed = table.length ? Math.max(...table.map((row) => row.played)) : 0;
-  const minPlayed = table.length ? Math.min(...table.map((row) => row.played)) : 0;
-  const tableIsPartial = competitionStarted && minPlayed < maxPlayed;
-  const selectedTeamHasResult = Boolean(teamTableRow && teamTableRow.played > 0);
 
   if (loading) {
     return (
@@ -336,7 +310,7 @@ export default function TeamHub({
       </div>
 
       <div className="teamHubTabs" role="tablist" aria-label="Team pages">
-        {(["overview", "fixtures", "results", "table"] as const).map((item) => (
+        {(["overview", "fixtures", "results"] as const).map((item) => (
           <button
             key={item}
             className={tab === item ? "active" : ""}
@@ -379,26 +353,13 @@ export default function TeamHub({
             </button>
           </div>
 
-          <button
-            className="teamOverviewCard teamPositionCard"
-            onClick={() => setTab("table")}
-          >
-            <span>League position</span>
-            {teamTableRow && competitionStarted && selectedTeamHasResult ? (
-              <>
-                <strong>{teamTableRow.table_position}</strong>
-                <p>
-                  {tableIsPartial ? "Provisional • " : ""}
-                  {teamTableRow.points} pts • {teamTableRow.played} played
-                </p>
-              </>
-            ) : competitionStarted ? (
-              <p>Awaiting this team’s first recorded result.</p>
-            ) : (
-              <p>Season not started — no completed results yet.</p>
-            )}
-            <b>View table →</b>
-          </button>
+          <div className="teamOverviewCard">
+            <span>League tables</span>
+            <p>
+              Coming soon — we’ll add standings when we can link them to
+              accurate England Hockey results.
+            </p>
+          </div>
         </div>
       )}
 
@@ -433,66 +394,6 @@ export default function TeamHub({
         </div>
       )}
 
-      {tab === "table" && (
-        <div className="teamHubPanel">
-          <div className="teamHubPanelHeading">
-            <h3>League table</h3>
-            <span>{selectedTeam.competitionName}</span>
-          </div>
-
-          {!competitionStarted && (
-            <p className="leagueTableNote">
-              No completed league results are in Hockey Live yet. The table will
-              calculate automatically as results are recorded.
-            </p>
-          )}
-
-          {tableIsPartial && (
-            <p className="leagueTableNote">
-              <b>Partial table.</b> We’re still loading this round’s verified
-              results, so positions are provisional.
-            </p>
-          )}
-
-          <div className="leagueTableWrap">
-            <table className="leagueTable">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  <th>Team</th>
-                  <th>P</th>
-                  <th>W</th>
-                  <th>D</th>
-                  <th>L</th>
-                  <th>GD</th>
-                  <th>Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {table.map((row) => (
-                  <tr
-                    key={row.team_id}
-                    className={row.team_id === selectedTeam.id ? "myTeamRow" : ""}
-                  >
-                    <td>
-                      {competitionStarted && row.played > 0
-                        ? row.table_position
-                        : "—"}
-                    </td>
-                    <td>{row.team_name}</td>
-                    <td>{row.played}</td>
-                    <td>{row.won}</td>
-                    <td>{row.drawn}</td>
-                    <td>{row.lost}</td>
-                    <td>{row.goal_difference}</td>
-                    <td><b>{row.points}</b></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </section>
   );
 }
