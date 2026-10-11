@@ -34,6 +34,12 @@ const HOCKEY_LIVE_URL = "https://hockey-live-eight.vercel.app";
 function friendlyAuthError(message?: string | null) {
   const value = (message ?? "").toLowerCase();
 
+  if (
+    value.includes("email rate limit") ||
+    value.includes("over_email_send_rate_limit")
+  ) {
+    return "Too many reset emails have been requested recently. Please wait a while before trying again, and check your inbox and spam folder for an earlier reset link.";
+  }
   if (value.includes("invalid login credentials")) {
     return "That email or password is incorrect.";
   }
