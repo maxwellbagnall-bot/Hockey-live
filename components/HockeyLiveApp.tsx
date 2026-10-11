@@ -219,13 +219,20 @@ export default function HockeyLiveApp() {
     const recognition = new Recognition();
     const existingComment = comment.trimEnd();
     recognition.lang = "en-GB";
-    recognition.continuous = false;
+    recognition.continuous = true;
     recognition.interimResults = false;
+    const finalResults = new Map<number, string>();
     recognition.onresult = (event) => {
-      const transcript = Array.from(event.results)
-        .filter((result) => result.isFinal)
-        .map((result) => result[0]?.transcript ?? "")
-        .join("")
+      Array.from(event.results).forEach((result, index) => {
+        if (result.isFinal) {
+          finalResults.set(index, result[0]?.transcript?.trim() ?? "");
+        }
+      });
+      const transcript = Array.from(finalResults.entries())
+        .sort(([left], [right]) => left - right)
+        .map(([, text]) => text)
+        .filter(Boolean)
+        .join(" ")
         .trim();
       if (transcript) {
         setComment(
