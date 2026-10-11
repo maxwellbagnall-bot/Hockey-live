@@ -1532,7 +1532,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .matchFocusOpen .timelinePanel {
     position:absolute;
     z-index:205;
-    top:168px;
+    top:calc(max(152px, env(safe-area-inset-top) + 92px) + 150px);
     bottom:154px;
     left:0;
     right:0;
