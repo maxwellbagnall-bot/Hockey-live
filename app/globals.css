@@ -3572,3 +3572,79 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     font-size:14px;
   }
 }
+
+
+/* Prominent speech input for match comments */
+.commentBox,
+.quickCommentBox,
+.focusCommentBox {
+  grid-template-columns: 68px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.commentMicButton {
+  display: flex;
+  width: 68px;
+  height: 60px;
+  min-height: 60px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 5px !important;
+  border: 2px solid rgba(24, 226, 139, .48) !important;
+  border-radius: 14px !important;
+  background: #0a2d2a !important;
+  color: var(--green) !important;
+  font-size: 10px !important;
+  font-weight: 950;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.commentMicButton svg {
+  width: 25px;
+  height: 25px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2;
+}
+
+.commentMicButton.isDictating {
+  background: #174d3d !important;
+  border-color: var(--green) !important;
+  animation: commentMicPulse 1.4s ease-in-out infinite;
+}
+
+.commentMicButton:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+@keyframes commentMicPulse {
+  50% { box-shadow: 0 0 0 5px rgba(24, 226, 139, .14); }
+}
+
+@media (max-width: 620px) {
+  .quickCommentBox,
+  .commentBox,
+  .focusCommentBox {
+    grid-template-columns: 60px minmax(0, 1fr) auto;
+    gap: 6px;
+  }
+
+  .commentMicButton {
+    width: 60px;
+    height: 58px;
+    min-height: 58px;
+  }
+
+  .quickCommentBox input,
+  .commentBox input,
+  .focusCommentBox input {
+    min-height: 58px;
+  }
+}
