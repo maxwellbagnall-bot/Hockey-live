@@ -214,7 +214,15 @@ export default function HockeyLiveApp() {
   );
 
   const feed = useMemo(
-    () => events.map((event) => ({ ...event, ...EVENT_META[event.kind] })),
+    () =>
+      [...events]
+        .sort(
+          (a, b) =>
+            Number(b.kind === "comment") - Number(a.kind === "comment") ||
+            b.minute - a.minute ||
+            b.createdAt.localeCompare(a.createdAt)
+        )
+        .map((event) => ({ ...event, ...EVENT_META[event.kind] })),
     [events]
   );
 
