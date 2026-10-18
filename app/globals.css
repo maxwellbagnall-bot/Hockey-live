@@ -111,6 +111,9 @@ h1 { max-width:800px; margin:0; font-size:clamp(50px,8vw,96px); line-height:.94;
 .demoPill { display:inline-flex; align-items:center; padding:7px 10px; border-radius:999px; border:1px solid var(--line); color:var(--muted); font-size:12px; font-weight:800; }
 
 .matchGrid { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; }
+.followedFeed { display:grid; gap:34px; }
+.feedGroup { min-width:0; }
+.feedGroup .sectionHeading { margin-bottom:14px; }
 .matchCard {
   width:100%;
   text-align:left;
