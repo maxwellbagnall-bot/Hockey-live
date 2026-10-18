@@ -29,7 +29,7 @@ type Profile = {
   completed_at: string | null;
 };
 
-const HOCKEY_LIVE_URL = "https://hockey-live-eight.vercel.app";
+const HOCKEY_LIVE_URL = "https://hockey-live.co.uk";
 
 function friendlyAuthError(message?: string | null) {
   const value = (message ?? "").toLowerCase();
