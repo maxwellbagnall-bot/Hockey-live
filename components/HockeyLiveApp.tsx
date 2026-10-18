@@ -794,11 +794,12 @@ export default function HockeyLiveApp() {
   useEffect(() => {
     if (!selected || !myProfileId) return;
     if (selected.controllerProfileId !== myProfileId) return;
+    const selectedMatchId = selected.id;
 
     async function heartbeat() {
       await supabase.rpc("heartbeat_match_control", {
         p_access_token: null,
-        p_match_id: selected.id
+        p_match_id: selectedMatchId
       });
     }
 
