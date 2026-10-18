@@ -189,6 +189,18 @@ declare global {
   }
 }
 
+function londonDateKey(value: string | Date) {
+  const date = value instanceof Date ? value : new Date(value);
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/London",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const part = (type: string) => parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
 export default function HockeyLiveApp() {
   const [matches, setMatches] = useState<Match[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -299,7 +311,8 @@ export default function HockeyLiveApp() {
   const [nowTick, setNowTick] = useState(() => Date.now());
 
   const selected =
-    matches.find((match) => match.id === selectedId) ?? matches[0];
+    matches.find((match) => match.id === selectedId) ??
+    (interestedTeamIds.length === 0 ? matches[0] : undefined);
 
   const selectedClock = selected
     ? sharedClockSeconds(selected, nowTick)
@@ -336,31 +349,49 @@ export default function HockeyLiveApp() {
     [matches]
   );
 
+  const followedMatches = useMemo(
+    () =>
+      realMatches.filter(
+        (match) =>
+          interestedTeamIds.includes(match.homeTeamId) ||
+          interestedTeamIds.includes(match.awayTeamId)
+      ),
+    [realMatches, interestedTeamIds]
+  );
+
   const liveMatches = useMemo(
-    () => realMatches.filter((match) => match.status === "live"),
-    [realMatches]
+    () => followedMatches.filter((match) => match.status === "live"),
+    [followedMatches]
   );
 
-  const myTeamMatches = useMemo(
+  const todayKey = londonDateKey(new Date(nowTick));
+  const nextSevenDaysKey = londonDateKey(new Date(nowTick + 7 * 24 * 60 * 60 * 1000));
+
+  const todaysMatches = useMemo(
     () =>
-      realMatches.filter(
+      followedMatches.filter(
         (match) =>
-          match.status !== "finished" &&
-          (interestedTeamIds.includes(match.homeTeamId) ||
-            interestedTeamIds.includes(match.awayTeamId))
+          match.status === "live" ||
+          (match.status === "scheduled" &&
+            match.startsAt &&
+            londonDateKey(match.startsAt) === todayKey)
       ),
-    [realMatches, interestedTeamIds]
+    [followedMatches, todayKey]
   );
 
-  const otherMatches = useMemo(
+  const upcomingMatches = useMemo(
     () =>
-      realMatches.filter(
-        (match) =>
-          match.status !== "finished" &&
-          !interestedTeamIds.includes(match.homeTeamId) &&
-          !interestedTeamIds.includes(match.awayTeamId)
-      ),
-    [realMatches, interestedTeamIds]
+      followedMatches.filter((match) => {
+        if (match.status !== "scheduled" || !match.startsAt) return false;
+        const dateKey = londonDateKey(match.startsAt);
+        return dateKey > todayKey && dateKey <= nextSevenDaysKey;
+      }),
+    [followedMatches, todayKey, nextSevenDaysKey]
+  );
+
+  const pastMatches = useMemo(
+    () => followedMatches.filter((match) => match.status === "finished"),
+    [followedMatches]
   );
 
   function announce(message: string) {
@@ -666,7 +697,7 @@ export default function HockeyLiveApp() {
         interestedTeamIds.includes(match.awayTeamId)
     );
 
-    if (preferred) setSelectedId(preferred.id);
+    setSelectedId(preferred?.id ?? "");
   }, [interestedTeamIds, realMatches]);
 
   useEffect(() => {
@@ -1131,115 +1162,121 @@ export default function HockeyLiveApp() {
       <section className="section" id="live">
         <div className="sectionHeading">
           <div>
-            <p className="eyebrow">LIVE & UPCOMING</p>
-            <h2>{myTeamMatches.length ? "Your teams next" : "Matches"}</h2>
+            <p className="eyebrow">YOUR FOLLOWED TEAMS</p>
+            <h2>Matches that matter to you</h2>
           </div>
-          <span className="demoPill">Community powered</span>
+          <span className="demoPill">{interestedTeamIds.length} teams followed</span>
         </div>
 
-        {myTeamMatches.length > 0 && (
-          <div className="matchGrid">
-            {myTeamMatches.map((match) => {
-              const clock = sharedClockSeconds(match, nowTick);
-              return (
-                <button
-                  key={match.id}
-                  className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
-                  onClick={() => openMatchCentre(match.id)}
-                >
-                  <div className="matchMeta">
-                    <span>
-                      {match.status === "scheduled"
-                        ? formatFixtureTime(match.startsAt)
-                        : match.status === "finished" || match.period === "FT"
-                          ? "Finished"
-                          : `${match.period} • ${formatClock(clock)}`}
-                    </span>
-                    <span className={`trust ${trustClass(match.trust)}`}>
-                      {match.trust}
-                    </span>
-                  </div>
-
-                  <div className="teamRow">
-                    <span>{match.home}</span><b>{match.homeScore}</b>
-                  </div>
-                  <div className="teamRow">
-                    <span>{match.away}</span><b>{match.awayScore}</b>
-                  </div>
-
-                  <div className="cardFooter">
-                    {match.controllerUsername
-                      ? `Controlled by @${match.controllerUsername}`
-                      : match.status === "scheduled"
-                        ? "Open fixture"
-                        : "Open match centre"}{" "}
-                    <span>→</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        )}
-
-        {otherMatches.length > 0 && (
-          <div className="otherMatchesBlock">
-            {myTeamMatches.length > 0 && <h3>Other matches</h3>}
-            <div className="matchGrid">
-              {otherMatches.map((match) => {
-                const clock = sharedClockSeconds(match, nowTick);
-                return (
-                  <button
-                    key={match.id}
-                    className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
-                    onClick={() => openMatchCentre(match.id)}
-                  >
-                    <div className="matchMeta">
-                      <span>
-                        {match.status === "scheduled"
-                          ? formatFixtureTime(match.startsAt)
-                          : match.period === "FT"
-                            ? "Finished"
-                            : `${match.period} • ${formatClock(clock)}`}
-                      </span>
-                      <span className={`trust ${trustClass(match.trust)}`}>
-                        {match.trust}
-                      </span>
-                    </div>
-
-                    <div className="teamRow">
-                      <span>{match.home}</span><b>{match.homeScore}</b>
-                    </div>
-                    <div className="teamRow">
-                      <span>{match.away}</span><b>{match.awayScore}</b>
-                    </div>
-
-                    <div className="cardFooter">
-                      {match.controllerUsername
-                        ? `Controlled by @${match.controllerUsername}`
-                        : match.status === "scheduled"
-                          ? "Open fixture"
-                          : "Open match centre"}{" "}
-                      <span>→</span>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {realMatches.length === 0 && (
+        {interestedTeamIds.length === 0 && (
           <div className="emptyFixtureState">
-            <b>No matches yet.</b>
-            <span>Create the first fixture and it will appear here.</span>
-            <a className="emptyCreateGame" href="/create">
-              Create a game →
-            </a>
+            <b>Choose your teams to personalise your feed.</b>
+            <span>Your matches, results and commentary will appear here.</span>
+            <a className="emptyCreateGame" href="#teams">Choose teams →</a>
+          </div>
+        )}
+
+        {interestedTeamIds.length > 0 && (
+          <div className="followedFeed">
+            <div className="feedGroup">
+              <div className="sectionHeading compact">
+                <div>
+                  <p className="eyebrow">TODAY</p>
+                  <h3>On today</h3>
+                </div>
+              </div>
+              {todaysMatches.length > 0 ? (
+                <div className="matchGrid">
+                  {todaysMatches.map((match) => {
+                    const clock = sharedClockSeconds(match, nowTick);
+                    return (
+                      <button
+                        key={match.id}
+                        className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+                        onClick={() => openMatchCentre(match.id)}
+                      >
+                        <div className="matchMeta">
+                          <span>
+                            {match.status === "live"
+                              ? `${match.period} • ${formatClock(clock)}`
+                              : formatFixtureTime(match.startsAt)}
+                          </span>
+                          <span className={`trust ${trustClass(match.trust)}`}>{match.trust}</span>
+                        </div>
+                        <div className="teamRow"><span>{match.home}</span><b>{match.homeScore}</b></div>
+                        <div className="teamRow"><span>{match.away}</span><b>{match.awayScore}</b></div>
+                        <div className="cardFooter">
+                          {match.status === "live" ? "Open live match" : "Open today’s fixture"} <span>→</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : <p className="heroCopy">No matches for your teams today.</p>}
+            </div>
+
+            <div className="feedGroup">
+              <div className="sectionHeading compact">
+                <div>
+                  <p className="eyebrow">NEXT SEVEN DAYS</p>
+                  <h3>Coming up</h3>
+                </div>
+              </div>
+              {upcomingMatches.length > 0 ? (
+                <div className="matchGrid">
+                  {upcomingMatches.map((match) => (
+                    <button
+                      key={match.id}
+                      className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+                      onClick={() => openMatchCentre(match.id)}
+                    >
+                      <div className="matchMeta">
+                        <span>{formatFixtureTime(match.startsAt)}</span>
+                        <span className={`trust ${trustClass(match.trust)}`}>{match.trust}</span>
+                      </div>
+                      <div className="teamRow"><span>{match.home}</span><b>{match.homeScore}</b></div>
+                      <div className="teamRow"><span>{match.away}</span><b>{match.awayScore}</b></div>
+                      <div className="cardFooter">Open fixture <span>→</span></div>
+                    </button>
+                  ))}
+                </div>
+              ) : <p className="heroCopy">No upcoming fixtures in the next seven days.</p>}
+            </div>
+
+            <div className="feedGroup">
+              <div className="sectionHeading compact">
+                <div>
+                  <p className="eyebrow">PAST MATCHES</p>
+                  <h3>Results and commentary</h3>
+                </div>
+              </div>
+              {pastMatches.length > 0 ? (
+                <div className="matchGrid">
+                  {pastMatches.map((match) => (
+                    <button
+                      key={match.id}
+                      className={`matchCard ${match.id === selectedId ? "selected" : ""}`}
+                      onClick={() => openMatchCentre(match.id)}
+                    >
+                      <div className="matchMeta">
+                        <span>
+                          Finished{match.startsAt ? ` · ${formatFixtureTime(match.startsAt)}` : ""}
+                        </span>
+                        <span className={`trust ${trustClass(match.trust)}`}>{match.trust}</span>
+                      </div>
+                      <div className="teamRow"><span>{match.home}</span><b>{match.homeScore}</b></div>
+                      <div className="teamRow"><span>{match.away}</span><b>{match.awayScore}</b></div>
+                      <div className="cardFooter">View result and commentary <span>→</span></div>
+                    </button>
+                  ))}
+                </div>
+              ) : <p className="heroCopy">Past results for your teams will appear here.</p>}
+            </div>
           </div>
         )}
       </section>
 
-      {selected && (
+            {selected && (
         <section
           className={`section matchCentre ${matchFocusOpen ? "matchFocusOpen" : ""}`}
           id="match"
