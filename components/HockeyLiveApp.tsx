@@ -318,12 +318,7 @@ export default function HockeyLiveApp() {
   const feed = useMemo(
     () =>
       [...events]
-        .sort(
-          (a, b) =>
-            Number(b.kind === "comment") - Number(a.kind === "comment") ||
-            b.minute - a.minute ||
-            b.createdAt.localeCompare(a.createdAt)
-        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
         .map((event) => ({ ...event, ...EVENT_META[event.kind] })),
     [events]
   );
@@ -509,7 +504,6 @@ export default function HockeyLiveApp() {
       )
       .eq("match_id", matchId)
       .eq("is_void", false)
-      .order("minute", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: false });
 
     if (requestId !== eventLoadSequence.current) return;
