@@ -2189,7 +2189,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   display:flex;
   flex-wrap:wrap;
   gap:6px;
-  margin-top:7px;
+  margin-top:0;
 }
 .eventCorrectionActions button {
   border:1px solid var(--line);
