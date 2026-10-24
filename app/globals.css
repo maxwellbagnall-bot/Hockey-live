@@ -1198,6 +1198,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     overscroll-behavior:contain;
     -webkit-overflow-scrolling:touch;
     padding-right:2px;
+    gap:0;
   }
 
   .matchFocusOpen .eventRow {
@@ -1424,7 +1425,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     right:0;
     z-index:220;
     padding:
-      max(152px, calc(env(safe-area-inset-top) + 92px))
+      max(136px, calc(env(safe-area-inset-top) + 76px))
       12px
       9px;
     background:linear-gradient(180deg,#0b1c2c,#07131f);
@@ -1535,7 +1536,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   .matchFocusOpen .timelinePanel {
     position:absolute;
     z-index:205;
-    top:calc(max(152px, env(safe-area-inset-top) + 92px) + 150px);
+    top:calc(max(136px, env(safe-area-inset-top) + 76px) + 140px);
     bottom:154px;
     left:0;
     right:0;
@@ -1561,9 +1562,9 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   }
 
   .matchFocusOpen .eventRow {
-    grid-template-columns:42px 1fr;
-    gap:10px;
-    padding:10px 0;
+    grid-template-columns:38px 1fr;
+    gap:8px;
+    padding:6px 0;
   }
 
   .matchFocusOpen .eventIcon {
