@@ -2042,7 +2042,7 @@ export default function HockeyLiveApp() {
               {feed.map((event) => (
                 <article
                   key={event.id}
-                  className={`eventRow ${event.isDisallowed ? "disallowedEvent" : ""}`}
+                  className={`eventRow ${event.kind === "comment" ? "commentEvent" : ""} ${event.isDisallowed ? "disallowedEvent" : ""}`}
                 >
                   <span className={`eventIcon ${event.kind}`}>
                     {event.isDisallowed && event.kind === "goal" ? "NO" : event.icon}
@@ -2086,36 +2086,35 @@ export default function HockeyLiveApp() {
                       {event.isLate && !event.isDisallowed && (
                         <span className="lateReport">Reported late</span>
                       )}
+                      {!event.isDisallowed &&
+                        (myReportedEventIds.includes(event.id) || canCorrectEvents) && (
+                          <div className="eventCorrectionActions">
+                            {myReportedEventIds.includes(event.id) && (
+                              <button onClick={() => void undoMyReport(event.id)}>
+                                Undo my report
+                              </button>
+                            )}
+
+                            {canCorrectEvents && event.kind === "goal" && (
+                              <button
+                                className="disallowGoalButton"
+                                onClick={() => void disallowGoal(event.id)}
+                              >
+                                Disallow goal
+                              </button>
+                            )}
+
+                            {canCorrectEvents && (
+                              <button
+                                className="removeEventButton"
+                                onClick={() => void removeEvent(event.id)}
+                              >
+                                Remove mistake
+                              </button>
+                            )}
+                          </div>
+                        )}
                     </div>
-
-                    {!event.isDisallowed &&
-                      (myReportedEventIds.includes(event.id) || canCorrectEvents) && (
-                        <div className="eventCorrectionActions">
-                          {myReportedEventIds.includes(event.id) && (
-                            <button onClick={() => void undoMyReport(event.id)}>
-                              Undo my report
-                            </button>
-                          )}
-
-                          {canCorrectEvents && event.kind === "goal" && (
-                            <button
-                              className="disallowGoalButton"
-                              onClick={() => void disallowGoal(event.id)}
-                            >
-                              Disallow goal
-                            </button>
-                          )}
-
-                          {canCorrectEvents && (
-                            <button
-                              className="removeEventButton"
-                              onClick={() => void removeEvent(event.id)}
-                            >
-                              Remove mistake
-                            </button>
-                          )}
-                        </div>
-                      )}
                   </div>
                 </article>
               ))}
