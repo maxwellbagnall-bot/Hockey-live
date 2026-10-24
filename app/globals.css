@@ -3687,3 +3687,25 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     width: 60px;
   }
 }
+
+/* Tighten comment spacing in the live match feed */
+.commentEvent {
+  padding:5px 0;
+}
+.commentEvent .eventConfidenceRow {
+  margin-top:5px;
+}
+.commentEvent .eventCorrectionActions {
+  margin-top:4px;
+}
+@media (max-width:720px) {
+  .matchFocusOpen .timeline .commentEvent {
+    padding:3px 0;
+  }
+  .matchFocusOpen .timeline .commentEvent .eventConfidenceRow {
+    margin-top:3px;
+  }
+  .matchFocusOpen .timeline .commentEvent .eventCorrectionActions {
+    margin-top:3px;
+  }
+}
