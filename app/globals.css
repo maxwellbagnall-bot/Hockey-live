@@ -3696,7 +3696,7 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
   margin-top:5px;
 }
 .commentEvent .eventCorrectionActions {
-  margin-top:4px;
+  margin-top:0;
 }
 @media (max-width:720px) {
   .matchFocusOpen .timeline .commentEvent {
@@ -3706,6 +3706,6 @@ footer { display:flex; justify-content:space-between; align-items:center; gap:20
     margin-top:3px;
   }
   .matchFocusOpen .timeline .commentEvent .eventCorrectionActions {
-    margin-top:3px;
+    margin-top:0;
   }
 }
